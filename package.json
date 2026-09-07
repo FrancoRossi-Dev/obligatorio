@@ -1,0 +1,21 @@
+{
+  "name": "obligatorio",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "joi": "^18.2.8"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
