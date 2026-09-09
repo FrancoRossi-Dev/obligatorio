@@ -1,3 +1,9 @@
 node_modules/
 .env
 npm-debug.log*
+
+# Claude Code
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+.mcp.json
