@@ -3,6 +3,12 @@
 > Fuente: `2026_08_DFS_Obligatorio_1.pdf`
 > Materia: Desarrollo Full Stack integrado con IA – ORT
 > Carrera: Analista en Tecnologías de Información / Analista Programador
+>
+> **Tema actualizado el 14/09/2026.** Este documento reemplaza la versión anterior
+> (inversor individual con su portafolio). El detalle de por qué se cambió de tema,
+> las tres iteraciones de diseño consideradas y las razones de cada decisión están
+> en `claude/evaluacion-propuesta-consolidacion.md`. El detalle endpoint por
+> endpoint con sus respuestas está en `claude/endpoints-api.md`.
 
 ## Datos de la entrega
 
@@ -32,41 +38,64 @@ Desarrollar el backend de la aplicación con **NodeJS**.
   refiere a un documento almacenado en la base de datos, no a una temática
   concreta.
 
-## Temática seleccionada: Sistema de gestión de activos financieros
+## Temática seleccionada: Consolidación de cuentas financieras
 
-El equipo desarrolla una API para que un **inversor** lleve el control de su
-**portafolio de activos**. Mapeo del vocabulario genérico de la letra a este
-dominio:
+El equipo desarrolla una API para que una **empresa gestora / asesor de
+inversiones** centralice y consolide, para cada uno de sus **clientes**, las
+posiciones que ese cliente tiene distribuidas en distintos **bancos** —
+cargadas mediante alta manual o mediante importación de Excel. Mapeo del
+vocabulario genérico de la letra a este dominio:
 
-| Término de la letra | En este dominio |
-| --- | --- |
-| "documento" de colección | **Activo / Posición** del portafolio (ej.: 10 acciones de AAPL, 0,5 BTC, un inmueble) |
-| "categoría" (asignable a los documentos; suele gestionarla el administrador) | **Clase de activo** (renta variable, renta fija, cripto, inmobiliario, efectivo/FX, commodities) |
-| plan `plus` (4) vs `premium` (ilimitado) | Cantidad de activos permitidos en el portafolio |
-| integración de IAG en un flujo | RF08 – análisis/consejo de inversión sobre el portafolio |
-| recurso de terceros no visto en clase | API de cotizaciones de mercado (RF21) |
+| Término de la letra                                                          | En este dominio                                                                                        |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| "documento" de colección                                                     | **Cuenta** (una cuenta que el usuario abre en un banco para un cliente; agrupa sus instrumentos)       |
+| "categoría" (asignable a los documentos; suele gestionarla el administrador) | **Banco** (institución financiera; catálogo global dado de alta por el `admin`)                        |
+| plan `plus` (4) vs `premium` (ilimitado)                                     | Cantidad de **Cuentas** que puede tener el usuario (≈ cantidad de bancos con los que trabaja)          |
+| integración de IAG en un flujo                                               | RF08/RF22 – análisis de la posición consolidada de un cliente (concentración, diversificación, riesgo) |
+| recurso de terceros no visto en clase                                        | API de tipo de cambio (FX) para consolidar cuentas en distintas monedas (RF21)                         |
+
+Dentro de cada Cuenta viven los **Instrumentos** (las posiciones concretas:
+acciones, bonos, fondos, efectivo), que es donde se apoya la consolidación,
+la cotización de terceros y el análisis de IA. `Cliente` es una entidad de
+negocio del usuario, sin login propio en el núcleo del Obligatorio 1.
 
 ### Factibilidad y riesgos del tema
 
 - **Encaja bien** con los dos puntos más difíciles de la letra: la IAG tiene un
-  flujo natural (análisis del portafolio) y el recurso de terceros es pertinente
-  al dominio (cotizaciones).
-- **Riesgo 1 – Subida de imágenes.** Un activo financiero no tiene una imagen
-  obvia. Justificación de dominio adoptada: la imagen es el **logo/ícono del
-  activo**, un **comprobante de compra** (captura del bróker) o la **foto del
-  bien** cuando el activo es físico (inmueble, oro, arte, vehículo).
+  flujo natural (analizar la cartera consolidada de un cliente) y el recurso de
+  terceros es pertinente al dominio — de hecho la propia consolidación
+  multi-moneda _necesita_ un tipo de cambio para sumar posiciones en distintas
+  monedas a un valor común.
+- **Riesgo 1 – Subida de imágenes.** Resuelto: la imagen se asocia a la
+  **Cuenta**, como comprobante de apertura/titularidad (captura del banco o del
+  documento de alta). Es más natural que forzar una imagen sobre un instrumento
+  financiero.
 - **Riesgo 2 – "Toda integración de terceros debe funcionar en todo momento,
-  sin límites por uso".** Varias APIs financieras gratuitas tienen rate limits
-  agresivos (p. ej. Alpha Vantage, 25 req/día). Mitigación: usar proveedores sin
-  límites molestos (Frankfurter para FX —sin API key—, CoinGecko free para
-  cripto) y **cachear** las cotizaciones en MongoDB con TTL.
-- **Alcance:** RF06, RF07 y RF09 son *extras* valorados como innovación, no
-  núcleo; dependen de mantener un histórico de valuaciones (`PriceSnapshot`).
+  sin límites por uso".** Se elige **Frankfurter** (tipo de cambio del Banco
+  Central Europeo, sin API key ni rate limit agresivo) como recurso de
+  terceros obligatorio, y se **cachea** en MongoDB con TTL. Una cotización de
+  mercado de acciones queda como extra opcional si sobra tiempo, no como
+  núcleo, porque las APIs gratuitas de precios de acciones sí tienen límites
+  molestos (p. ej. Alpha Vantage, 25 req/día).
+- **Riesgo 3 – El plazo real es de 17 días, no un mes**, contados desde que se
+  definió este tema (14/09) hasta la entrega del 1/10. El alcance de este
+  documento ya está recortado a un núcleo viable para ese plazo; el resto
+  (histórico de valuaciones, cotización de mercado, reporte en PDF, derivados
+  Call/Put como tipo de instrumento, rol de Cliente con login propio) queda
+  como extra explícito, ver sección de Extras más abajo. **Fondos sí queda
+  dentro del núcleo de este sprint** (decisión del 14/09): el tipo de
+  instrumento `fondo` se implementa junto con `accion`, `bono` y `efectivo`,
+  no como extra.
+- **Alcance:** RF06, RF07 y RF09 son _extras_ valorados como innovación, no
+  núcleo; dependen de mantener un histórico de valuaciones (`PriceSnapshot`)
+  por instrumento.
 
 ## Requerimientos funcionales
 
 > Convención: cada RF lista sus **criterios de aceptación (CA)** con el status
-> code esperado. Cada CA se traduce 1:1 en un test de Postman.
+> code esperado. Cada CA se traduce 1:1 en un test de Postman. El detalle
+> completo de cada endpoint (método, ruta, body, todas las respuestas) está en
+> `claude/endpoints-api.md`.
 
 ### Núcleo — autenticación y usuarios
 
@@ -82,7 +111,8 @@ dominio:
   - CA2: credenciales incorrectas → `401`.
   - CA3: campos vacíos → `400`.
 - **RF11** – El registro solo crea usuarios con rol `user`. Existe al menos un
-  **administrador precargado** en la base de datos.
+  **administrador precargado** en la base de datos, dueño del catálogo de
+  Bancos.
   - CA1: no hay endpoint público para crear administradores.
 - **RF19** – Cambio de plan. El registro asigna `plus`; un usuario `plus` puede
   cambiar a `premium`. El administrador no gestiona planes.
@@ -97,94 +127,165 @@ dominio:
   inyecciones.
   - CA1: cualquier payload inválido → `400` con detalle del/los campos.
 
-### Núcleo — activos (ABM del "documento")
+### Núcleo — clientes (entidad de negocio del usuario)
 
-- **RF03** – Un usuario logueado puede ingresar un activo (nombre/símbolo,
-  clase de activo, cantidad, precio de compra, moneda).
-  - CA1: alta válida → `201` + activo creado.
+- **RF25** – Un usuario logueado puede dar de alta un cliente (razón social,
+  RUT, documento/identificador, ejecutivo responsable, estado).
+  - CA1: alta válida → `201` + cliente creado.
+  - CA2: campo obligatorio vacío → `400`.
+  - CA3: RUT ya registrado por ese usuario → `409`.
+  - CA4: sin token → `401`.
+- **RF26** – Un usuario logueado puede modificar y consultar el detalle de un
+  cliente propio.
+  - CA1: modificación válida → `200`.
+  - CA2: consulta de un cliente propio → `200`.
+  - CA3: cliente de otro usuario → `403` / `404`.
+- **RF27** – Un usuario logueado puede eliminar un cliente propio.
+  - CA1: baja de un cliente sin cuentas asociadas → `200` / `204`.
+  - CA2: cliente de otro usuario → `403` / `404`.
+- **RF28** – La consulta de clientes está **paginada** y admite **filtros**
+  (estado, ejecutivo responsable, texto libre).
+  - CA1: respuesta incluye metadatos de paginación.
+  - CA2: parámetros inválidos → `400`.
+- **RF18** – No se puede eliminar un cliente que tenga cuentas asociadas.
+  - CA1: baja de cliente con cuentas asociadas → `409` (integridad
+    referencial).
+
+### Núcleo — cuentas (ABM del "documento", con límite de plan)
+
+- **RF03** – Un usuario logueado puede ingresar una cuenta (banco, cliente,
+  moneda, estado).
+  - CA1: alta válida → `201` + cuenta creada.
   - CA2: campo obligatorio vacío → `400`.
   - CA3: sin token → `401`.
-  - CA4: usuario `plus` que ya tiene 4 activos → `403` (límite de plan).
-  - CA5: clase de activo inexistente → `422`.
-- **RF12** – Un usuario logueado puede eliminar un activo de su portafolio.
-  - CA1: baja de un activo propio → `200` / `204`.
-  - CA2: activo inexistente → `404`.
-  - CA3: activo de otro usuario → `403` / `404`.
-- **RF13** – Un usuario logueado puede modificar un activo (cantidad, precio de
-  compra, clase de activo, moneda, imagen).
-  - CA1: modificación válida → `200` + activo actualizado.
+  - CA4: usuario `plus` que ya tiene 4 cuentas → `403` (límite de plan).
+  - CA5: banco o cliente inexistente → `422`.
+- **RF12** – Un usuario logueado puede eliminar una cuenta propia.
+  - CA1: baja de una cuenta propia → `200` / `204`.
+  - CA2: cuenta inexistente → `404`.
+  - CA3: cuenta de otro usuario → `403` / `404`.
+- **RF13** – Un usuario logueado puede modificar una cuenta (moneda, estado,
+  banco, imagen).
+  - CA1: modificación válida → `200` + cuenta actualizada.
   - CA2: datos inválidos → `400`.
-  - CA3: activo de otro usuario → `403` / `404`.
-- **RF04** – Un usuario logueado puede ver el **detalle de su portafolio**: cada
-  activo con su cantidad y su valuación actual.
-  - CA1: con token → `200` + lista de activos con valuación.
+  - CA3: cuenta de otro usuario → `403` / `404`.
+- **RF04** – Un usuario logueado puede ver el **detalle de una cuenta**: sus
+  instrumentos con su cantidad y su valuación actual.
+  - CA1: con token → `200` + lista de instrumentos con valuación.
   - CA2: sin token → `401`.
-- **RF05** – Un usuario logueado puede ver el **valor total** de su portafolio
-  (monto agregado, desglosable por moneda).
+- **RF05** – Un usuario logueado puede ver el **valor total** de una cuenta o
+  de un cliente (monto agregado, desglosable por moneda).
   - CA1: con token → `200` + total.
-- **RF14** – La consulta del portafolio está **paginada** (`page`, `limit`).
+- **RF14** – La consulta de cuentas está **paginada** (`page`, `limit`).
   - CA1: respuesta incluye metadatos de paginación (total, página, límite).
   - CA2: parámetros de paginación inválidos → `400`.
-- **RF15** – La consulta del portafolio admite **filtros**: por clase de activo,
-  moneda, rango de valor, fecha de incorporación y apreciación/depreciación.
-  - CA1: filtro válido → `200` + solo los activos que cumplen.
+- **RF15** – La consulta de cuentas admite **filtros**: por banco, cliente,
+  moneda, estado y fecha de alta.
+  - CA1: filtro válido → `200` + solo las cuentas que cumplen.
   - CA2: valor de filtro inválido → `400`.
 
-### Núcleo — clases de activo (ABM de la "categoría")
+### Núcleo — bancos (ABM de la "categoría")
 
 - **RF16** – El administrador puede dar de alta, baja, modificar y consultar
-  **clases de activo**.
+  **bancos**.
   - CA1: alta válida (rol admin) → `201`.
   - CA2: usuario `user` intenta ABM → `403`.
-  - CA3: nombre de clase duplicado → `409`.
-  - CA4: consulta de clases → `200` (disponible para cualquier usuario logueado).
-- **RF17** – No se puede eliminar una clase de activo que tenga activos
-  asociados.
-  - CA1: baja de clase sin activos → `200` / `204`.
-  - CA2: baja de clase con activos asociados → `409` (integridad referencial).
+  - CA3: nombre de banco duplicado → `409`.
+  - CA4: consulta de bancos → `200` (disponible para cualquier usuario
+    logueado).
+- **RF17** – No se puede eliminar un banco que tenga cuentas asociadas.
+  - CA1: baja de banco sin cuentas → `200` / `204`.
+  - CA2: baja de banco con cuentas asociadas → `409` (integridad referencial).
+
+### Núcleo — instrumentos (dentro de una cuenta)
+
+- **RF29** – Un usuario logueado puede dar de alta, modificar, eliminar y
+  consultar instrumentos dentro de una cuenta propia (tipo, símbolo/nombre,
+  cantidad, precio de compra, moneda).
+  - CA1: alta válida → `201`.
+  - CA2: campo obligatorio vacío → `400`.
+  - CA3: tipo de instrumento inexistente (fuera de `accion`, `bono`, `fondo`,
+    `efectivo`) → `422`.
+  - CA4: cuenta de otro usuario → `403` / `404`.
+- **RF15b** – La consulta de instrumentos de una cuenta está paginada y admite
+  filtros (tipo, moneda, rango de valor, apreciación/depreciación).
+  - CA1: filtro válido → `200`.
+  - CA2: filtro inválido → `400`.
+- **RF10** – Un usuario logueado puede **importar instrumentos desde un Excel**
+  hacia una cuenta (carga masiva, alternativa al alta manual de RF29).
+  - CA1: archivo válido con columnas obligatorias → `201` + resumen
+    (importados / rechazados con motivo).
+  - CA2: archivo con formato inesperado o sin columnas obligatorias → `400`.
+  - CA3: registros duplicados dentro del archivo → se informan como
+    rechazados, no rompen la importación del resto.
 
 ### Núcleo — imágenes, terceros e IAG
 
-- **RF20** – Un usuario logueado puede subir una imagen asociada a un activo
-  (logo / comprobante / foto del bien) a Cloudinary o Vercel Blob.
-  - CA1: imagen válida → `200` + URL almacenada en el activo.
+- **RF20** – Un usuario logueado puede subir una imagen asociada a una cuenta
+  (comprobante de apertura/titularidad) a Cloudinary o Vercel Blob.
+  - CA1: imagen válida → `200` + URL almacenada en la cuenta.
   - CA2: archivo con formato o tamaño no permitido → `400` / `422`.
   - CA3: sin token → `401`.
-- **RF21** – Un endpoint consume una **API de mercado de terceros** para
-  obtener/actualizar la cotización actual de un activo (recurso no visto en
+- **RF21** – Un endpoint consume una **API de tipo de cambio (FX)** de
+  terceros para consolidar cuentas en distintas monedas (recurso no visto en
   clase).
-  - CA1: símbolo válido → `200` + cotización; se cachea con TTL.
-  - CA2: símbolo inexistente en el proveedor → `404` / `422`.
+  - CA1: par de monedas válido → `200` + cotización; se cachea con TTL.
+  - CA2: moneda no soportada → `422`.
   - CA3: el proveedor no responde → se sirve el último valor cacheado; si no
     hay, `503` controlado sin romper el resto de la app.
-- **RF08 / RF22** – Un endpoint de **IAG** recibe el portafolio del usuario y
-  devuelve un análisis/recomendación de inversión (no es un chat; la lógica de
-  IAG es interna al endpoint).
-  - CA1: portafolio con activos → `200` + análisis.
+- **RF08 / RF22** – Un endpoint de **IAG** recibe la posición consolidada de un
+  cliente y devuelve un análisis (concentración, diversificación por moneda o
+  tipo de instrumento, riesgo) — no es un chat; la lógica de IAG es interna al
+  endpoint.
+  - CA1: cliente con cuentas e instrumentos → `200` + análisis.
   - CA2: el proveedor de IA no responde → `200` con fallback controlado (o
     `503` sin afectar los demás endpoints); nunca error 5xx sin manejar.
   - CA3: sin token → `401`.
 
+### Núcleo — consolidación
+
+- **RF34** – Un usuario logueado puede ver la **posición consolidada de un
+  cliente**: agregado de todas sus cuentas, desglosado por banco, por moneda
+  y por tipo de instrumento.
+  - CA1: con token → `200` + agregados.
+  - CA2: cliente sin cuentas → `200` con totales en cero (no error).
+  - CA3: cliente de otro usuario → `403` / `404`.
+- **RF35** – Un usuario logueado puede ver la **valuación total de una
+  cuenta** desglosada por tipo de instrumento.
+  - CA1: con token → `200` + agregados.
+
 ### Extras (funcionalidades innovadoras — valoradas, no núcleo)
 
-- **RF06** – Reporte de apreciación/depreciación de los activos. Requiere
+- **RF06** – Reporte de apreciación/depreciación de los instrumentos. Requiere
   histórico de valuaciones (`PriceSnapshot`).
-- **RF07** – Proyección de valorización/desvalorización según el histórico.
-- **RF09** – Descarga de un reporte en PDF con el detalle del portafolio.
-- Ideas adicionales: alertas por umbral de precio, conversión multi-moneda con
-  FX en vivo, indicador de diversificación (% por clase de activo).
+- **RF07** – Evolución histórica del patrimonio consolidado según ese
+  histórico (equivalente al RF39 del análisis original).
+- **RF09** – Descarga de un reporte en PDF con el detalle de la posición
+  consolidada de un cliente.
+- Ideas adicionales: cotización de mercado de acciones (además del FX);
+  corrección manual de registros de Excel que quedaron con error; rol de
+  Cliente con login propio y su propio dashboard de solo lectura; derivados
+  (Call/Put) como tipo de instrumento adicional a Acción/Bono/Fondo/Efectivo.
 
 ## Modelo de datos (implícito)
 
 - **User**: `username`, `email`, `passwordHash`, `role` (`user` | `admin`),
   `plan` (`plus` | `premium`), timestamps.
-- **Asset / Position** (el "documento"): `userId`, `assetClassId`,
-  `symbol`/`name`, `quantity`, `purchasePrice`, `currency`, `currentValue`,
-  `imageUrl`, `createdAt`.
-- **AssetClass** (la "categoría"): `name`, `description`.
-- **PriceSnapshot** (opcional, para RF06/RF07): `assetId`, `value`, `date`.
-- La **entidad que maneja el límite de plan** queda a elección del equipo; la
-  opción más simple es el campo `plan` en `User`.
+- **Cliente**: `userId`, `razonSocial`, `rut`, `ejecutivoResponsable`,
+  `estado` (`activo` | `inactivo`), timestamps.
+- **Banco** (la "categoría"): `nombre`, `pais`, `rut`, timestamps.
+- **Cuenta** (el "documento"): `userId`, `clienteId`, `bancoId`, `moneda`,
+  `estado`, `comprobanteUrl` (imagen), `fechaAlta`, timestamps.
+- **Instrumento**: `cuentaId`, `tipo` (`accion` | `bono` | `fondo` |
+  `efectivo`, discriminador), `simbolo`/`nombre`, `cantidad`,
+  `precioCompra`, `moneda`, `valorActual`, `detalle` (sub-documento según
+  `tipo` — para `fondo`, incluye la composición: `deAcciones` | `deBonos` |
+  `balanceado` | `alternativo`), timestamps.
+- **PriceSnapshot** (opcional, para RF06/RF07): `instrumentoId`, `valor`,
+  `fecha`.
+- La **entidad que maneja el límite de plan** es **Cuenta**: se cuenta la
+  cantidad de cuentas del usuario logueado (`plus` → máx. 4, `premium` → sin
+  límite).
 
 ## Requerimientos de la letra (referencia)
 
@@ -230,7 +331,8 @@ dominio:
 ## Documentación y tests de Postman
 
 - [ ] **Una colección** que englobe todas las carpetas; es la que se exporta y
-      se entrega.
+      se entrega. _(Ya generada — ver `postman_collection.json` entregado en el
+      chat, y `claude/endpoints-api.md` con el detalle de cada request.)_
 - [ ] **Carpetas:** cada una agrupa los endpoints relacionados entre sí.
 - [ ] **Requests:** uno por endpoint de la API.
   - [ ] Para cada request, generar los **tests** que permitan evaluar todas las
@@ -240,12 +342,13 @@ dominio:
         sea el esperado y todas las verificaciones necesarias.
   - [ ] Ir asignando las **variables de colección** que necesiten los endpoints
         sucesivos.
-  - Flujos de ejemplo esperados:
+  - Flujos de ejemplo esperados (adaptados a este dominio: "documento" =
+    Cuenta):
     - Registro con datos incorrectos → registro exitoso (guardando
       credenciales para requests siguientes) → registro erróneo por usuario
       duplicado.
-    - Ingreso de 5 documentos en plan `plus` → error en el documento 5 por
-      límite → cambio de plan del usuario → alta del documento 5.
+    - Ingreso de 4 cuentas en plan `plus` → error en la 5ª cuenta por
+      límite → cambio de plan del usuario → alta de la 5ª cuenta.
 - [ ] **Variable de colección `prod_base_url`** que apunte a la URL base de la
       API publicada remotamente. La documentación apunta por defecto a la URL
       remota.
