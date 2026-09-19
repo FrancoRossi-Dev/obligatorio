@@ -1,29 +1,46 @@
 import mongoose from 'mongoose';
 
-// Empresa cliente. esta entidad refiere a los clientes del sistema,
-// que se loguean y gestionan sus propios clientes
+// A Company is a client managed by an Advisor. It has no login of its own.
 
-const CompanySchema = new mongoose.Schema({
-  comercialName: {
-    type: String,
-    required: true,
+const companyDetailsSchema = new mongoose.Schema(
+  {
+    commercialName: {
+      type: String,
+      required: true,
+    },
+    legalName: {
+      type: String,
+      required: true,
+    },
+    address: {
+      type: String,
+    },
+    country: {
+      type: String,
+    },
   },
-  companyName: {
-    type: Number,
-    required: true,
-  },
-  password: {
-    type: String,
-    required: true,
-  },
-  adress: {
-    type: String,
-  },
-  country: {
-    type: String,
-  },
-});
+  { _id: false },
+);
 
-const Company = mongoose.model('Company', companySchema, 'companys');
+const companySchema = new mongoose.Schema(
+  {
+    advisorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    companyDetails: {
+      type: companyDetailsSchema,
+      required: true,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { timestamps: true },
+);
+
+const Company = mongoose.model('Company', companySchema, 'companies');
 
 export default Company;
