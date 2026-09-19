@@ -1,29 +1,31 @@
 import mongoose from 'mongoose';
-import BankAdress from './BankAdress.model';
+import BankAccount from './BankAccount.model';
 
 // these companys are the clients of our users, they manage their actives between banks
 
+//seria  CompanyCustomer
 const CompanySchema = new mongoose.Schema({
   comercialName: {
     type: String,
     required: true,
   },
   companyName: {
-    type: Number,
+    type: String,
     required: true,
   },
   manager: {
-    type: String,
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Manager'
   },
   country: {
     type: String,
   },
-  banks: [BankAdress],
-  adressBook: {
+  accounts: [BankAccount],// seria mejor account?
+  bankAccounts : {
     type: Array,
   },
 });
 
-const Company = mongoose.model('Company', companySchema, 'companys');
+const Company = mongoose.model('Company', CompanySchema, 'companies');
 
 export default Company;
