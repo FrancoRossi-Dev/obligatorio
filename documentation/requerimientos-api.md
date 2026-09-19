@@ -50,9 +50,16 @@ vocabulario genérico de la letra a este dominio:
 | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | "documento" de colección                                                     | **Cuenta** (una cuenta que el usuario abre en un banco para un cliente; agrupa sus instrumentos)       |
 | "categoría" (asignable a los documentos; suele gestionarla el administrador) | **Banco** (institución financiera; catálogo global dado de alta por el `admin`)                        |
-| plan `plus` (4) vs `premium` (ilimitado)                                     | Cantidad de **Cuentas** que puede tener el usuario (≈ cantidad de bancos con los que trabaja)          |
+| plan `base` (4) vs `premium` (ilimitado)                                     | Cantidad de **Cuentas** que puede tener el usuario (≈ cantidad de bancos con los que trabaja)          |
 | integración de IAG en un flujo                                               | RF08/RF22 – análisis de la posición consolidada de un cliente (concentración, diversificación, riesgo) |
 | recurso de terceros no visto en clase                                        | API de tipo de cambio (FX) para consolidar cuentas en distintas monedas (RF21)                         |
+
+> **Nota sobre el nombre del plan.** La letra usa literalmente el nombre
+> `plus` para el plan que se asigna al registrarse (`2026_08_DFS_Obligatorio_1.pdf`,
+> p.3: _"cambiar de plan plus ... a premium"_). El equipo decidió nombrarlo
+> `base` en el modelo (`v1/models/user.model.js`, campo `planTier`) y en el
+> resto de esta documentación, asumiendo el riesgo de que en la letra
+> aparezca como `plus`. Tenerlo presente para la defensa.
 
 Dentro de cada Cuenta viven los **Instrumentos** (las posiciones concretas:
 acciones, bonos, fondos, efectivo), que es donde se apoya la consolidación,
@@ -103,20 +110,20 @@ negocio del usuario, sin login propio en el núcleo del Obligatorio 1.
   - CA1: alta válida → `201` + datos del usuario (sin passwordHash).
   - CA2: campos vacíos o inválidos → `400`.
   - CA3: username o email ya existente → `409`.
-  - CA4: el registro asigna siempre rol `user` y plan `plus` (no se puede
+  - CA4: el registro asigna siempre rol `advisor` y plan `base` (no se puede
     elegir rol ni plan en el body).
 - **RF02** – Un usuario anónimo puede loguearse y un usuario logueado puede
   desloguearse.
   - CA1: credenciales correctas → `200` + JWT.
   - CA2: credenciales incorrectas → `401`.
   - CA3: campos vacíos → `400`.
-- **RF11** – El registro solo crea usuarios con rol `user`. Existe al menos un
-  **administrador precargado** en la base de datos, dueño del catálogo de
+- **RF11** – El registro solo crea usuarios con rol `advisor`. Existe al menos
+  un **administrador precargado** en la base de datos, dueño del catálogo de
   Bancos.
   - CA1: no hay endpoint público para crear administradores.
-- **RF19** – Cambio de plan. El registro asigna `plus`; un usuario `plus` puede
+- **RF19** – Cambio de plan. El registro asigna `base`; un usuario `base` puede
   cambiar a `premium`. El administrador no gestiona planes.
-  - CA1: `plus` → `premium` → `200`.
+  - CA1: `base` → `premium` → `200`.
   - CA2: usuario ya `premium` intenta cambiar → `409` / `422`.
   - CA3: sin token → `401`.
 - **RF23** – Todos los endpoints protegidos exigen JWT válido.
@@ -158,7 +165,7 @@ negocio del usuario, sin login propio en el núcleo del Obligatorio 1.
   - CA1: alta válida → `201` + cuenta creada.
   - CA2: campo obligatorio vacío → `400`.
   - CA3: sin token → `401`.
-  - CA4: usuario `plus` que ya tiene 4 cuentas → `403` (límite de plan).
+  - CA4: usuario `base` que ya tiene 4 cuentas → `403` (límite de plan).
   - CA5: banco o cliente inexistente → `422`.
 - **RF12** – Un usuario logueado puede eliminar una cuenta propia.
   - CA1: baja de una cuenta propia → `200` / `204`.
@@ -189,7 +196,7 @@ negocio del usuario, sin login propio en el núcleo del Obligatorio 1.
 - **RF16** – El administrador puede dar de alta, baja, modificar y consultar
   **bancos**.
   - CA1: alta válida (rol admin) → `201`.
-  - CA2: usuario `user` intenta ABM → `403`.
+  - CA2: usuario `advisor` intenta ABM → `403`.
   - CA3: nombre de banco duplicado → `409`.
   - CA4: consulta de bancos → `200` (disponible para cualquier usuario
     logueado).
@@ -267,25 +274,63 @@ negocio del usuario, sin login propio en el núcleo del Obligatorio 1.
   Cliente con login propio y su propio dashboard de solo lectura; derivados
   (Call/Put) como tipo de instrumento adicional a Acción/Bono/Fondo/Efectivo.
 
-## Modelo de datos (implícito)
+## Modelo de datos
 
-- **User**: `username`, `email`, `passwordHash`, `role` (`user` | `admin`),
-  `plan` (`plus` | `premium`), timestamps.
-- **Cliente**: `userId`, `razonSocial`, `rut`, `ejecutivoResponsable`,
-  `estado` (`activo` | `inactivo`), timestamps.
-- **Banco** (la "categoría"): `nombre`, `pais`, `rut`, timestamps.
-- **Cuenta** (el "documento"): `userId`, `clienteId`, `bancoId`, `moneda`,
-  `estado`, `comprobanteUrl` (imagen), `fechaAlta`, timestamps.
-- **Instrumento**: `cuentaId`, `tipo` (`accion` | `bono` | `fondo` |
-  `efectivo`, discriminador), `simbolo`/`nombre`, `cantidad`,
-  `precioCompra`, `moneda`, `valorActual`, `detalle` (sub-documento según
-  `tipo` — para `fondo`, incluye la composición: `deAcciones` | `deBonos` |
-  `balanceado` | `alternativo`), timestamps.
-- **PriceSnapshot** (opcional, para RF06/RF07): `instrumentoId`, `valor`,
-  `fecha`.
-- La **entidad que maneja el límite de plan** es **Cuenta**: se cuenta la
-  cantidad de cuentas del usuario logueado (`plus` → máx. 4, `premium` → sin
-  límite).
+> Refleja el estado real de `v1/models/*.model.js` al 19/09/2026 (commit
+> `cb0ef9c`). Los nombres de campo son los del código (en inglés, por
+> convención del proyecto); esta sección solo traduce/explica en español. Los
+> puntos marcados _pendiente_ son requeridos por algún RF pero todavía no
+> existen en el schema — hay que agregarlos o ajustar el RF antes de la
+> entrega.
+
+- **User** (colección `users`, con `discriminatorKey: role`): `username`,
+  `password` (hasheado con bcrypt, `select: false`), `lastConnection`,
+  timestamps.
+  - **Admin** (`role: "admin"`): sin campos propios. Precargado en base,
+    dueño del catálogo de Bancos.
+  - **Advisor** (`role: "advisor"` — el "usuario común" que se autoregistra,
+    el asesor/gestora de la letra): `details.{comercialName, legalName,
+    address, country, email}`, `planTier` (`base` | `premium`, default
+    `base`).
+- **Company** (colección `companies`, el "Cliente" de negocio del asesor):
+  `advisorId` (ref `User`), `companyDetails.{commercialName, legalName,
+  address, country}`, `isDeleted` (baja lógica), timestamps.
+  - _Pendiente (RF25–RF28):_ no hay `rut` ni `ejecutivoResponsable` ni un
+    `estado` (`activo`/`inactivo`) explícito — hoy solo existe `isDeleted`, y
+    no hay ningún campo con restricción de unicidad (RF25-CA3 pide RUT
+    duplicado → `409`, pero no hay RUT todavía).
+- **Bank** (colección `banks`, la "categoría"): `name` (único), `region`,
+  `country`, `logoURL` (obligatorio), timestamps. No tiene `rut`.
+- **BankAccount** (colección `bankAccounts`, el "documento" plan-limitado):
+  `companyId` (ref `Company`), `bankId` (ref `Bank`), `number`,
+  `accountName`, `currency`, `isDeleted`, timestamps. Índice único compuesto
+  `{ bankId, number }`.
+  - _Pendiente:_ no hay `estado` (RF15 pide poder filtrar por estado) ni
+    `comprobanteUrl`/imagen (RF20, obligatorio en la letra).
+- **Instrument** (colección `instruments`, un único modelo para las 4 clases
+  vía el discriminador `type`): `companyId` (ref `Company`), `bankId` (ref
+  `Bank`), `bankAccountId` (ref `BankAccount`), `issuerId` (ref `Issuer`,
+  requerido solo si `type` es `stock` o `bond`), `type` (`stock` | `bond` |
+  `fund` | `cash`), `name`, `quantity`, `purchasePrice`, `currency`,
+  `fundDetail.composition` (`equity` | `bond` | `balanced` | `alternative`,
+  requerido solo si `type === "fund"`), `isDeleted`, timestamps.
+  - _Pendiente:_ no hay `valorActual` (o equivalente) — necesario para
+    RF04/RF34/RF35 (valuación) y para RF06/RF07 (apreciación/depreciación).
+- **Issuer** (colección `issuers`, **entidad nueva**, no estaba contemplada
+  en versiones anteriores de este documento): el emisor de una acción o un
+  bono (empresa, gobierno) — distinto de `Company`, que es el cliente del
+  asesor. `issuerDetails.{commercialName, legalName (único), address,
+  country}`, `sector`, timestamps. La referencia `Instrument` cuando `type`
+  es `stock` o `bond`.
+  - _Pendiente:_ no tiene RF ni endpoints propios todavía (no aparece en
+    `endpoints.md` más que como referencia). Falta decidir quién lo
+    administra — por el paralelismo con `Bank` (catálogo global, campo único),
+    lo más consistente es que sea ABM de `admin`, pero es una decisión abierta.
+- **PriceSnapshot** (opcional, extra para RF06/RF07 — no implementado):
+  `instrumentoId`, `valor`, `fecha`.
+- La **entidad que maneja el límite de plan** es **BankAccount**: se cuenta
+  la cantidad de cuentas del `Advisor` logueado (`base` → máx. 4, `premium`
+  → sin límite).
 
 ## Requerimientos de la letra (referencia)
 

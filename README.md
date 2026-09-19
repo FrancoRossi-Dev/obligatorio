@@ -1,8 +1,14 @@
-# FinTrack API — Sistema de gestión de activos financieros
+# FinTrack API — Consolidación de cuentas financieras
 
-API REST para que un inversor lleve el control de su portafolio de activos:
-alta de posiciones, valuación contra cotizaciones de mercado, reportes de
-apreciación/depreciación y un análisis de inversión asistido por IA generativa.
+API REST para que una empresa gestora / asesor de inversiones (`advisor`)
+centralice, para cada uno de sus clientes (`Company`), las posiciones que
+ese cliente tiene distribuidas en distintas cuentas bancarias (`BankAccount`)
+y en distintos bancos (`Bank`): alta de instrumentos (acciones, bonos,
+fondos, efectivo), consolidación multi-moneda contra una API de tipo de
+cambio de terceros, y un análisis de la cartera asistido por IA generativa.
+Ver [`documentation/requerimientos-api.md`](documentation/requerimientos-api.md)
+para el detalle del dominio y [`documentation/evaluacion-de-propuesta.md`](documentation/evaluacion-de-propuesta.md)
+para el porqué de cada decisión.
 
 - **Producto:** API REST versionada (`/v1`), publicada.
 - **Materia:** Desarrollo Full Stack integrado con IA — Universidad ORT Uruguay.
@@ -12,6 +18,7 @@ apreciación/depreciación y un análisis de inversión asistido por IA generati
 | --- | --- |
 | API publicada | _pendiente de deploy_ |
 | Colección de Postman | [`documentation/`](documentation/) _(pendiente de exportar)_ |
+| Endpoints | [`documentation/endpoints.md`](documentation/endpoints.md) |
 | Requerimientos | [`documentation/requerimientos-api.md`](documentation/requerimientos-api.md) |
 
 ---
@@ -19,20 +26,24 @@ apreciación/depreciación y un análisis de inversión asistido por IA generati
 ## Estado del proyecto
 
 En desarrollo. El repositorio contiene el esqueleto de la API (Express 5, ruteo
-`/v1`, middlewares de validación y de *not found*). Ver el detalle funcional y los
-criterios de aceptación en
+`/v1`, conexión a MongoDB, modelos Mongoose y middlewares de autenticación JWT,
+validación de body/params, *not found* y manejo de errores). Todavía no hay
+routers, controllers ni validators: `v1/v1.routes.js` está vacío. Ver el detalle
+funcional y los criterios de aceptación en
 [`documentation/requerimientos-api.md`](documentation/requerimientos-api.md).
 
 | Área | Estado |
 | --- | --- |
 | Scaffold Express + ruteo `/v1` | ✅ |
-| Conexión a MongoDB (Mongoose) | ⬜ |
-| Registro / login / JWT | ⬜ |
-| ABM de activos (con límite por plan) | ⬜ |
-| ABM de clases de activo (categorías) | ⬜ |
+| Conexión a MongoDB (Mongoose) | ✅ |
+| Modelos: `User`/`Admin`/`Advisor`, `Company`, `Bank`, `BankAccount`, `Instrument`, `Issuer` | 🟨 (faltan campos usados por varios RF — ver `documentation/requerimientos-api.md` § Modelo de datos) |
+| Middleware de autenticación (verifica el JWT `Bearer`) | ✅ |
+| Registro / login (emisión de JWT) | ⬜ |
+| ABM de Cuentas (`BankAccount`, con límite por plan) | ⬜ |
+| ABM de Bancos (catálogo, Admin) | ⬜ |
 | Subida de imágenes (Cloudinary / Vercel Blob) | ⬜ |
-| Integración API de mercado (cotizaciones) | ⬜ |
-| Endpoint de IA generativa (análisis de portafolio) | ⬜ |
+| Integración API de FX (terceros) | ⬜ |
+| Endpoint de IA generativa (análisis de cartera consolidada) | ⬜ |
 | Colección y tests de Postman | ⬜ |
 | Deploy en Vercel | ⬜ |
 
@@ -47,12 +58,13 @@ criterios de aceptación en
 - **Validación:** Joi (validación de entrada duplicada en el backend)
 - **Almacenamiento de imágenes:** Cloudinary o Vercel Blob
 - **IA generativa:** proveedor LLM vía API (flujo interno, no chat)
-- **Datos de mercado:** API de terceros (FX / cripto / acciones) con caché
+- **Datos de mercado:** API de FX de terceros (Frankfurter) con caché
 - **Deploy:** Vercel
 - **Documentación y tests de endpoints:** Postman
 
-> Las dependencias de datos, auth e integraciones todavía no están instaladas;
-> se irán agregando a `package.json` a medida que se implementen.
+> `mongoose`, `jsonwebtoken`, `joi` y `bcryptjs` ya están instalados
+> (`package.json`); falta agregar el cliente de subida de imágenes y el del
+> proveedor de IA generativa a medida que se implementen esos flujos.
 
 ---
 
@@ -95,7 +107,7 @@ Definidas en `.env` (no se versiona). Ver `.env.example` para la plantilla.
 | `MONGODB_URI` | Cadena de conexión a MongoDB | `mongodb://localhost:27017/fintrack` |
 | `JWT_SECRET` | Secreto para firmar los tokens | `una-clave-larga-y-aleatoria` |
 | `JWT_EXPIRES_IN` | Vigencia del token | `1d` |
-| `PLUS_ASSET_LIMIT` | Máx. de activos para el plan `plus` | `4` |
+| `BASE_PLAN_ACCOUNT_LIMIT` | Máx. de `BankAccount` para el plan `base` (la letra lo llama `plus`; ver nota en `requerimientos-api.md`) | `4` |
 | `CLOUDINARY_URL` | Credenciales de Cloudinary (o config de Vercel Blob) | `cloudinary://key:secret@cloud` |
 | `MARKET_API_BASE_URL` | Base URL del proveedor de cotizaciones | `https://api.frankfurter.app` |
 | `MARKET_API_KEY` | API key del proveedor de cotizaciones (si aplica) | — |
@@ -113,11 +125,14 @@ Definidas en `.env` (no se versiona). Ver `.env.example` para la plantilla.
 ├── server.js              # Punto de entrada: levanta el servidor HTTP
 ├── v1/                    # Versión 1 de la API
 │   ├── v1.routes.js       # Router raíz de /v1; monta los routers de cada recurso
-│   ├── routes/            # Un router por recurso (usuarios, activos, categorías, ...)
-│   ├── controllers/       # Manejo de request/response por endpoint
-│   ├── validators/        # Esquemas Joi de validación de entrada
-│   └── middlewares/       # Auth, validación de body, not found, manejo de errores
-├── documentation/         # Letra del obligatorio, requerimientos y colección de Postman
+│   ├── config/            # Conexión a MongoDB
+│   ├── models/            # Esquemas Mongoose (User/Admin/Advisor, Company, Bank, BankAccount, Instrument, Issuer)
+│   ├── routes/            # Un router por recurso (usuarios, cuentas, bancos, ...) — pendiente
+│   ├── controllers/       # Manejo de request/response por endpoint — pendiente
+│   ├── validators/        # Esquemas Joi de validación de entrada — pendiente
+│   └── middlewares/       # authenticate (JWT), validatedBody, validatedParams, notFound, error
+├── documentation/         # Letra (PDF), requerimientos de API y cliente, endpoints,
+│                          # evaluación de la propuesta y colección de Postman
 └── README.md
 ```
 
