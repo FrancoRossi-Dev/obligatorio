@@ -1,7 +1,7 @@
-const notFoundMiddleware = (req, res, next) => {
-  res.status(404).json({
-    message: "Endpoint no encontrado",
-  });
+import { ERRORS, httpError } from '../utils/http-error.js';
+
+const notFoundMiddleware = () => {
+  throw httpError(ERRORS.routeNotFound);
 };
 
 export default notFoundMiddleware;

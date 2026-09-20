@@ -14,14 +14,14 @@ const CompanySchema = new mongoose.Schema({
     required: true,
   },
   manager: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: 'Manager'
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Manager',
   },
   country: {
     type: String,
   },
-  accounts: [BankAccount],// seria mejor account?
-  bankAccounts : {
+  accounts: [BankAccount], // seria mejor account? // creo que mejor banks por especificidad
+  bankAccounts: {
     type: Array,
   },
 });
