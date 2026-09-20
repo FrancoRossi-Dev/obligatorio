@@ -18,10 +18,8 @@ const toPublicUser = (user) => {
 };
 
 export const loginService = async (username, password) => {
-  // password is `select: false` in the schema, so it must be requested explicitly
   const user = await User.findOne({ username }).select('+password');
 
-  // Same error for unknown user and wrong password to avoid leaking which usernames exist
   const validPassword = user && (await bcrypt.compare(password, user.password));
   if (!validPassword) throw httpError(ERRORS.invalidCredentials);
 
@@ -31,7 +29,6 @@ export const loginService = async (username, password) => {
   return { user: toPublicUser(user), token: signToken(user) };
 };
 
-// Public registration only creates advisors on the base plan; admins are preloaded in the DB
 export const registerService = async ({ username, password, details }) => {
   if (await User.exists({ username })) {
     throw httpError(ERRORS.usernameTaken, { username });

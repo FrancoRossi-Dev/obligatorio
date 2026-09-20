@@ -1,6 +1,3 @@
-// Single source of truth for API error responses: { status, message } definitions plus a factory
-// that the error middleware serializes as { message, details }.
-
 export const ERRORS = {
   invalidData: { status: 400, message: 'The submitted data is invalid.' },
   invalidCredentials: { status: 401, message: 'Invalid username or password.' },
@@ -20,7 +17,6 @@ export const httpError = ({ status, message }, details = null) => {
   return error;
 };
 
-// Joi errors -> 400 with a compact [{ field, message }] list (never echoes the submitted values)
 export const validationError = (joiError) =>
   httpError(
     ERRORS.invalidData,
