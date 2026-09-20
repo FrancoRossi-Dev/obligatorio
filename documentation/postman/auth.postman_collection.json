@@ -1,0 +1,1140 @@
+{
+  "info": {
+    "name": "Abakus API - Auth (register / login / logout)",
+    "description": "Run the whole collection with the Collection Runner. It creates a fresh advisor per run (username/email are regenerated in request 1.1), so it is safe to re-run. Requires the preloaded admin (see scripts/seed-admins.js).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "host_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "base_url",
+      "value": "{{host_url}}/v1"
+    },
+    {
+      "key": "admin_username",
+      "value": "Fran"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123"
+    },
+    {
+      "key": "advisor_username",
+      "value": ""
+    },
+    {
+      "key": "advisor_email",
+      "value": ""
+    },
+    {
+      "key": "advisor_password",
+      "value": ""
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "revoked_token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Register",
+      "item": [
+        {
+          "name": "1.1 Empty body -> 400",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const id = Date.now().toString(36);",
+                  "pm.collectionVariables.set('advisor_username', 'advisor_' + id);",
+                  "pm.collectionVariables.set('advisor_email', 'advisor_' + id + '@example.com');",
+                  "pm.collectionVariables.set('advisor_password', 'Secret123');",
+                  "pm.collectionVariables.set('token', '');",
+                  "pm.collectionVariables.set('revoked_token', '');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Reports a problem with \"username\"', () => {",
+                  "  const fields = pm.response.json().details.map((d) => d.field);",
+                  "  pm.expect(fields).to.include(\"username\");",
+                  "});",
+                  "pm.test('Reports a problem with \"password\"', () => {",
+                  "  const fields = pm.response.json().details.map((d) => d.field);",
+                  "  pm.expect(fields).to.include(\"password\");",
+                  "});",
+                  "pm.test('Reports a problem with \"details\"', () => {",
+                  "  const fields = pm.response.json().details.map((d) => d.field);",
+                  "  pm.expect(fields).to.include(\"details\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.2 Missing advisor details -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Reports a problem with \"details\"', () => {",
+                  "  const fields = pm.response.json().details.map((d) => d.field);",
+                  "  pm.expect(fields).to.include(\"details\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{advisor_username}}\",\n  \"password\": \"{{advisor_password}}\",\n  \"confirmPassword\": \"{{advisor_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.3 Password confirmation mismatch -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Reports a problem with \"confirmPassword\"', () => {",
+                  "  const fields = pm.response.json().details.map((d) => d.field);",
+                  "  pm.expect(fields).to.include(\"confirmPassword\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{advisor_username}}\",\n  \"password\": \"{{advisor_password}}\",\n  \"confirmPassword\": \"Different123\",\n  \"details\": {\n    \"comercialName\": \"Acme Advisors\",\n    \"legalName\": \"Acme Advisors S.A.\",\n    \"address\": \"123 Market Street\",\n    \"country\": \"Uruguay\",\n    \"email\": \"{{advisor_email}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.4 Invalid email -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Reports a problem with \"details.email\"', () => {",
+                  "  const fields = pm.response.json().details.map((d) => d.field);",
+                  "  pm.expect(fields).to.include(\"details.email\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{advisor_username}}\",\n  \"password\": \"{{advisor_password}}\",\n  \"confirmPassword\": \"{{advisor_password}}\",\n  \"details\": {\n    \"comercialName\": \"Acme Advisors\",\n    \"legalName\": \"Acme Advisors S.A.\",\n    \"address\": \"123 Market Street\",\n    \"country\": \"Uruguay\",\n    \"email\": \"not-an-email\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.5 Role in body (privilege escalation) -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Reports a problem with \"role\"', () => {",
+                  "  const fields = pm.response.json().details.map((d) => d.field);",
+                  "  pm.expect(fields).to.include(\"role\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{advisor_username}}\",\n  \"password\": \"{{advisor_password}}\",\n  \"confirmPassword\": \"{{advisor_password}}\",\n  \"details\": {\n    \"comercialName\": \"Acme Advisors\",\n    \"legalName\": \"Acme Advisors S.A.\",\n    \"address\": \"123 Market Street\",\n    \"country\": \"Uruguay\",\n    \"email\": \"{{advisor_email}}\"\n  },\n  \"role\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.6 Plan in body -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Reports a problem with \"planTier\"', () => {",
+                  "  const fields = pm.response.json().details.map((d) => d.field);",
+                  "  pm.expect(fields).to.include(\"planTier\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{advisor_username}}\",\n  \"password\": \"{{advisor_password}}\",\n  \"confirmPassword\": \"{{advisor_password}}\",\n  \"details\": {\n    \"comercialName\": \"Acme Advisors\",\n    \"legalName\": \"Acme Advisors S.A.\",\n    \"address\": \"123 Market Street\",\n    \"country\": \"Uruguay\",\n    \"email\": \"{{advisor_email}}\"\n  },\n  \"planTier\": \"premium\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.7 Valid registration -> 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Returns a JWT', () => {",
+                  "  const { token } = pm.response.json();",
+                  "  pm.expect(token).to.be.a('string').and.match(/^[\\w-]+\\.[\\w-]+\\.[\\w-]+$/);",
+                  "  pm.collectionVariables.set('token', token);",
+                  "});",
+                  "pm.test('Creates an advisor on the base plan', () => {",
+                  "  const { user } = pm.response.json();",
+                  "  pm.expect(user.username).to.eql(pm.collectionVariables.get('advisor_username'));",
+                  "  pm.expect(user.role).to.eql('advisor');",
+                  "  pm.expect(user.planTier).to.eql('base');",
+                  "  pm.expect(user.details.email).to.eql(pm.collectionVariables.get('advisor_email'));",
+                  "});",
+                  "pm.test('Response never exposes the password', () => {",
+                  "  pm.expect(pm.response.text()).to.not.include('\"password\"');",
+                  "  pm.expect(pm.response.text()).to.not.include('$2');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{advisor_username}}\",\n  \"password\": \"{{advisor_password}}\",\n  \"confirmPassword\": \"{{advisor_password}}\",\n  \"details\": {\n    \"comercialName\": \"Acme Advisors\",\n    \"legalName\": \"Acme Advisors S.A.\",\n    \"address\": \"123 Market Street\",\n    \"country\": \"Uruguay\",\n    \"email\": \"{{advisor_email}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.8 Duplicate username -> 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Message is \"This username is already registered.\"', () => pm.expect(pm.response.json().message).to.eql(\"This username is already registered.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{advisor_username}}\",\n  \"password\": \"{{advisor_password}}\",\n  \"confirmPassword\": \"{{advisor_password}}\",\n  \"details\": {\n    \"comercialName\": \"Acme Advisors\",\n    \"legalName\": \"Acme Advisors S.A.\",\n    \"address\": \"123 Market Street\",\n    \"country\": \"Uruguay\",\n    \"email\": \"other_{{advisor_email}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.9 Duplicate email -> 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Message is \"This email is already linked to an advisor account.\"', () => pm.expect(pm.response.json().message).to.eql(\"This email is already linked to an advisor account.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"other_{{advisor_username}}\",\n  \"password\": \"{{advisor_password}}\",\n  \"confirmPassword\": \"{{advisor_password}}\",\n  \"details\": {\n    \"comercialName\": \"Acme Advisors\",\n    \"legalName\": \"Acme Advisors S.A.\",\n    \"address\": \"123 Market Street\",\n    \"country\": \"Uruguay\",\n    \"email\": \"{{advisor_email}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Login",
+      "item": [
+        {
+          "name": "2.1 Empty body -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Reports a problem with \"username\"', () => {",
+                  "  const fields = pm.response.json().details.map((d) => d.field);",
+                  "  pm.expect(fields).to.include(\"username\");",
+                  "});",
+                  "pm.test('Reports a problem with \"password\"', () => {",
+                  "  const fields = pm.response.json().details.map((d) => d.field);",
+                  "  pm.expect(fields).to.include(\"password\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "2.2 Wrong password -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Message is \"Invalid username or password.\"', () => pm.expect(pm.response.json().message).to.eql(\"Invalid username or password.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{advisor_username}}\",\n  \"password\": \"WrongPass123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "2.3 Unknown user -> 401 (same message, no user enumeration)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Message is \"Invalid username or password.\"', () => pm.expect(pm.response.json().message).to.eql(\"Invalid username or password.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"ghost_user_{{advisor_username}}\",\n  \"password\": \"WrongPass123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "2.4 Advisor login -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns a JWT', () => {",
+                  "  const { token } = pm.response.json();",
+                  "  pm.expect(token).to.be.a('string').and.match(/^[\\w-]+\\.[\\w-]+\\.[\\w-]+$/);",
+                  "  pm.collectionVariables.set('token', token);",
+                  "});",
+                  "pm.test('Returns the advisor and updates lastConnection', () => {",
+                  "  const { user } = pm.response.json();",
+                  "  pm.expect(user.role).to.eql('advisor');",
+                  "  pm.expect(user.lastConnection).to.be.a('string');",
+                  "});",
+                  "pm.test('Response never exposes the password', () => {",
+                  "  pm.expect(pm.response.text()).to.not.include('\"password\"');",
+                  "  pm.expect(pm.response.text()).to.not.include('$2');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{advisor_username}}\",\n  \"password\": \"{{advisor_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "2.5 Preloaded admin login -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns an admin and a JWT', () => {",
+                  "  const { user, token } = pm.response.json();",
+                  "  pm.expect(user.role).to.eql('admin');",
+                  "  pm.expect(token).to.be.a('string');",
+                  "});",
+                  "pm.test('Response never exposes the password', () => {",
+                  "  pm.expect(pm.response.text()).to.not.include('\"password\"');",
+                  "  pm.expect(pm.response.text()).to.not.include('$2');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Logout",
+      "item": [
+        {
+          "name": "3.1 Without token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Message is \"An access token is required to use this resource.\"', () => pm.expect(pm.response.json().message).to.eql(\"An access token is required to use this resource.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.2 Malformed token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Message is \"The access token is invalid or has expired.\"', () => pm.expect(pm.response.json().message).to.eql(\"The access token is invalid or has expired.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer not.a.jwt"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.3 Logout with a valid token -> 200",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('revoked_token', pm.collectionVariables.get('token'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Message is \"Signed out successfully.\"', () => pm.expect(pm.response.json().message).to.eql(\"Signed out successfully.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.4 Reuse the revoked token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Message is \"This session has already been closed.\"', () => pm.expect(pm.response.json().message).to.eql(\"This session has already been closed.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{revoked_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.5 Log in again -> 200 with a new token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Issues a different token than the revoked one', () => {",
+                  "  const { token } = pm.response.json();",
+                  "  pm.expect(token).to.not.eql(pm.collectionVariables.get('revoked_token'));",
+                  "  pm.collectionVariables.set('token', token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{advisor_username}}\",\n  \"password\": \"{{advisor_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "3.6 Logout the new session -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Message is \"Signed out successfully.\"', () => pm.expect(pm.response.json().message).to.eql(\"Signed out successfully.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Misc",
+      "item": [
+        {
+          "name": "4.1 Unknown endpoint under /v1 without token -> 401 (everything past /auth is protected)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Message is \"An access token is required to use this resource.\"', () => pm.expect(pm.response.json().message).to.eql(\"An access token is required to use this resource.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/does-not-exist",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "does-not-exist"
+              ]
+            }
+          }
+        },
+        {
+          "name": "4.2 Unknown endpoint outside /v1 -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test('Message is \"The requested endpoint does not exist.\"', () => pm.expect(pm.response.json().message).to.eql(\"The requested endpoint does not exist.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{host_url}}/does-not-exist",
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "does-not-exist"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

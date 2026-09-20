@@ -1,4 +1,4 @@
-# FinTrack API — Consolidación de cuentas financieras
+# Abakus API — Consolidación de cuentas financieras
 
 API REST para que una empresa gestora / asesor de inversiones (`advisor`)
 centralice, para cada uno de sus clientes (`Company`), las posiciones que
@@ -104,7 +104,7 @@ Definidas en `.env` (no se versiona). Ver `.env.example` para la plantilla.
 | Variable | Descripción | Ejemplo |
 | --- | --- | --- |
 | `PORT` | Puerto del servidor HTTP | `3000` |
-| `MONGODB_URI` | Cadena de conexión a MongoDB | `mongodb://localhost:27017/fintrack` |
+| `MONGODB_URI` | Cadena de conexión a MongoDB | `mongodb://localhost:27017/abakus` |
 | `JWT_SECRET` | Secreto para firmar los tokens | `una-clave-larga-y-aleatoria` |
 | `JWT_EXPIRES_IN` | Vigencia del token | `1d` |
 | `BASE_PLAN_ACCOUNT_LIMIT` | Máx. de `BankAccount` para el plan `base` (la letra lo llama `plus`; ver nota en `requerimientos-api.md`) | `4` |

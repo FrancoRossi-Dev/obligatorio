@@ -1,39 +1,63 @@
-// este es el auth de ale, ver adaptaciones necesarias para nuestro sistema
-
-import Usuario from '../models/usuario.model.js';
+import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import User, { Advisor } from '../models/user.model.js';
+import RevokedToken from '../models/revoked-token.model.js';
+import { ERRORS, httpError } from '../utils/http-error.js';
 
-export const loginService = async (username, password) => {
-  const usuario = await Usuario.findOne({ username });
-  if (!usuario) {
-    const error = new Error('Datos incorrectos');
-    error.status = 404;
-    error.details = { username };
-    throw error;
-  }
-  const validPassword = bcrypt.compareSync(password, usuario.password);
-  if (!validPassword) {
-    const error = new Error('Datos incorrectos');
-    error.status = 401;
-    error.details = { username };
-    throw error;
-  }
-  const token = jwt.sign({ usuario: username }, process.env.SECRET_KEY, { expiresIn: '1h' });
-  return { usuario, token };
+// The unique token id (jti) is what logout revokes
+const signToken = (user) =>
+  jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN,
+    jwtid: randomUUID(),
+  });
+
+const toPublicUser = (user) => {
+  const { password, ...publicUser } = user.toObject();
+  return publicUser;
 };
 
-export const registerService = async (username, password) => {
-  const usuarioExistente = await Usuario.findOne({ username });
-  if (usuarioExistente) {
-    const error = new Error('El usuario ya existe');
-    error.status = 409;
-    error.details = { username };
-    throw error;
+export const loginService = async (username, password) => {
+  // password is `select: false` in the schema, so it must be requested explicitly
+  const user = await User.findOne({ username }).select('+password');
+
+  // Same error for unknown user and wrong password to avoid leaking which usernames exist
+  const validPassword = user && (await bcrypt.compare(password, user.password));
+  if (!validPassword) throw httpError(ERRORS.invalidCredentials);
+
+  user.lastConnection = new Date();
+  await user.save();
+
+  return { user: toPublicUser(user), token: signToken(user) };
+};
+
+// Public registration only creates advisors on the base plan; admins are preloaded in the DB
+export const registerService = async ({ username, password, details }) => {
+  if (await User.exists({ username })) {
+    throw httpError(ERRORS.usernameTaken, { username });
   }
-  const hashedPassword = bcrypt.hashSync(password, Number(process.env.ROUND));
-  const usuario = new Usuario({ username, password: hashedPassword });
-  const token = jwt.sign({ usuario: username }, process.env.SECRET_KEY, { expiresIn: '1h' });
-  await usuario.save();
-  return { usuario, token };
+  if (await Advisor.exists({ 'details.email': details.email.toLowerCase().trim() })) {
+    throw httpError(ERRORS.emailTaken, { email: details.email });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, Number(process.env.SALT_ROUNDS));
+
+  let advisor;
+  try {
+    advisor = await Advisor.create({ username, password: hashedPassword, details });
+  } catch (err) {
+    // Concurrent registrations can slip past the checks above; the unique indexes catch them
+    if (err.code === Number(process.env.MONGO_DUPLICATE_KEY)) {
+      const isEmail = 'details.email' in (err.keyPattern ?? {});
+      throw httpError(isEmail ? ERRORS.emailTaken : ERRORS.usernameTaken);
+    }
+    throw err;
+  }
+
+  return { user: toPublicUser(advisor), token: signToken(advisor) };
+};
+
+// Revokes the token until it would have expired anyway; safe to call more than once
+export const logoutService = async (jti, exp) => {
+  await RevokedToken.updateOne({ jti }, { jti, expiresAt: new Date(exp * 1000) }, { upsert: true });
 };
