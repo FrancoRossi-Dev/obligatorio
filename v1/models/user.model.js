@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
 
 // Base user: shared by every role. Role-specific fields live on discriminators.
 
@@ -49,7 +48,15 @@ const advisorDetailsSchema = new mongoose.Schema(
     country: {
       type: String,
     },
-    email: {
+    document: {
+      type: String,
+      required: true,
+    },
+    phone: {
+      type: String,
+      required: true,
+    },
+    contactEmail: {
       type: String,
       required: true,
       unique: true,

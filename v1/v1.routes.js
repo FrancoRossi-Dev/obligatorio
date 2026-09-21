@@ -11,7 +11,8 @@ router.use('/auth', authRouter);
 router.use(authenticateMiddleware);
 
 // private routes
-router.use('/bank');
-router.use('/company');
-router.use('/issuer');
+// router.use('/bank');
+// router.use('/company');
+// router.use('/issuer');
+
 export default router;
