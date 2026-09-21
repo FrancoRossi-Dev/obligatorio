@@ -13,7 +13,8 @@ const signToken = (user) =>
   });
 
 const toPublicUser = (user) => {
-  const { password, ...publicUser } = user.toObject();
+  const publicUser = user.toObject();
+  delete publicUser.password;
   return publicUser;
 };
 
