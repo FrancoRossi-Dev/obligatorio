@@ -2,16 +2,16 @@ import mongoose from 'mongoose';
 
 const PositionSchema = new mongoose.Schema(
   {
-    companyId: {
+    clientId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Company',
+      ref: 'Client',
       required: true,
     },
     bankAccountId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'BankAccount',
       required: true,
-    },
+    }, // review
     issuerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Issuer',

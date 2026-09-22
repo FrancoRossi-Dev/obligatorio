@@ -1,10 +1,9 @@
 import mongoose from 'mongoose';
 
 // The entity that issues a stock or bond (e.g. a corporation or a
-// government) — distinct from Company, which is an advisor's client.
-// A domain expert will refine these details later.
+// government) — distinct from Client, which is an advisor's client.
 
-const issuerDetailsSchema = new mongoose.Schema(
+const issuerSchema = new mongoose.Schema(
   {
     commercialName: {
       type: String,
@@ -20,20 +19,7 @@ const issuerDetailsSchema = new mongoose.Schema(
     },
     country: {
       type: String,
-    },
-  },
-  { _id: false },
-);
-
-const issuerSchema = new mongoose.Schema(
-  {
-    issuerDetails: {
-      type: issuerDetailsSchema,
-      required: true,
-    },
-    sector: {
-      type: String,
-    },
+    }, // maybe-payment-type
   },
   { timestamps: true },
 );

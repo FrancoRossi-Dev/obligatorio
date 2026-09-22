@@ -7,6 +7,7 @@ const router = express.Router({ mergeParams: true });
 
 // login
 router.post('/login', validateBodyMiddleware(loginSchema), loginUser);
+
 // register
 router.post('/register', validateBodyMiddleware(registerSchema), registerUser);
 
