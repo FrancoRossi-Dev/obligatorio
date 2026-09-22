@@ -16,9 +16,9 @@ let createBank = null,
   deleteBank = null;
 
 // login
+router.get('/', getAllBanks).post('/', validateBodyMiddleware(createBankSchema), createBank);
+
 router
-  .get('/', getAllBanks)
-  .post('/', validateBodyMiddleware(createBankSchema), createBank)
   .get('/:id', getBankByID)
   .patch('/:id', validateBodyMiddleware(updateBankSchema), updateBank)
   .delete('/:id', deleteBank);
