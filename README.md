@@ -362,7 +362,7 @@ Una versión productiva debería, como mínimo:
 ## Autores
 
 - Franco Rossi
-- _(integrante 2)_
+- Victoria Martinez
 
 Universidad ORT Uruguay — Analista en Tecnologías de la Información / Analista Programador.
 
