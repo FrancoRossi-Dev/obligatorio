@@ -46,7 +46,7 @@ const PositionSchema = new mongoose.Schema(
     dateOfReport: {
       type: Date,
       required: true,
-      defaut: new Date(),
+      default: new Date(),
     },
     isDeleted: {
       type: Boolean,
