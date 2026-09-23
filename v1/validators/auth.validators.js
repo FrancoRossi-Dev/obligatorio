@@ -49,14 +49,10 @@ export const registerSchema = Joi.object({
   username,
   password,
   // Only used to compare against password; stripped so it never reaches the service
-  confirmPassword: Joi.string()
-    .valid(Joi.ref('password'))
-    .required()
-    .strip()
-    .messages({
-      'any.only': 'Password confirmation does not match the password.',
-      'string.empty': 'Please confirm your password.',
-      'any.required': 'Please confirm your password.',
-    }),
+  confirmPassword: Joi.string().valid(Joi.ref('password')).required().strip().messages({
+    'any.only': 'Password confirmation does not match the password.',
+    'string.empty': 'Please confirm your password.',
+    'any.required': 'Please confirm your password.',
+  }),
   details: advisorDetailsSchema,
 });

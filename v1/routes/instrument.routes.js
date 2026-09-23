@@ -1,24 +1,25 @@
 import express from 'express';
-import { validateBodyMiddleware } from '../middlewares/validatedBody.middleware';
+import { validateBodyMiddleware } from '../middlewares/validatedBody.middleware.js';
+import {
+  createInstrument,
+  getInstruments,
+  getInstrumentById,
+  updateInstrument,
+  deleteInstrument,
+} from '../controllers/instrument.controller.js';
+import {
+  createInstrumentSchema,
+  updateInstrumentSchema,
+} from '../validators/instrument.validators.js';
+
 const router = express.Router({ mergeParams: true });
 
-// @TODO
-// write joi
-let createInstrumentSchema = null,
-  updateInstrumentSchema = null;
-
-// write services
-let createInstrument = null,
-  updateInstrument = null,
-  getAllInstruments = null,
-  getInstrumentByID = null,
-  deleteInstrument = null;
-
-// login
 router
-  .get('/', getAllInstruments)
-  .post('/', validateBodyMiddleware(createInstrumentSchema), createInstrument)
-  .get('/:id', getInstrumentByID)
+  .get('/', getInstruments)
+  .post('/', validateBodyMiddleware(createInstrumentSchema), createInstrument);
+
+router
+  .get('/:id', getInstrumentById)
   .patch('/:id', validateBodyMiddleware(updateInstrumentSchema), updateInstrument)
   .delete('/:id', deleteInstrument);
 

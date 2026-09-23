@@ -7,11 +7,12 @@ const PositionSchema = new mongoose.Schema(
       ref: 'Client',
       required: true,
     },
+    // References a subdocument in Client.bankAccounts[], not a top-level collection,
+    // so it can't carry a `ref` for populate().
     bankAccountId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'BankAccount',
       required: true,
-    }, // review
+    },
     issuerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Issuer',
@@ -19,7 +20,7 @@ const PositionSchema = new mongoose.Schema(
         return this.type === 'stock' || this.type === 'bond';
       },
     },
-    InstrumentId: {
+    instrumentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Instrument',
       required: true,
@@ -46,7 +47,7 @@ const PositionSchema = new mongoose.Schema(
     dateOfReport: {
       type: Date,
       required: true,
-      default: new Date(),
+      default: Date.now,
     },
     isDeleted: {
       type: Boolean,

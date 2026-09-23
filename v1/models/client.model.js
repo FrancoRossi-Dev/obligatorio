@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 // A Client is managed by an Advisor. It has no login of its own.
-// Its bank accounts live in their own collection (see bank-account.model.js).
+// Its bank accounts are embedded subdocuments (see bankAccountSchema below).
 
 const clientDetailsSchema = new mongoose.Schema(
   {

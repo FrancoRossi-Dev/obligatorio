@@ -47,7 +47,9 @@ export const updateBankSchema = Joi.object({
     'string.base': 'Logo URL must be text.',
     'string.empty': 'Logo URL cannot be empty.',
     'string.uriCustomScheme': 'Logo URL must use http or https.',
-  }).min(1).messages({
-    'string.min': 'At least one field must be provided for update.',
-  })
-});
+  }),
+})
+  .min(1)
+  .messages({
+    'object.min': 'At least one field must be provided for update.',
+  });
