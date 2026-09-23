@@ -55,3 +55,53 @@ export const createPositionSchema = Joi.object({
     "date.base": "Date of report must be a valid date.",
   }),
 });
+
+export const updatePositionSchema = Joi.object({
+  clientId: Joi.string().messages({
+    "string.base": "Client ID must be text.",
+  }),
+
+  bankAccountId: Joi.string().messages({
+    "string.base": "Bank account ID must be text.",
+  }),
+
+  issuerId: Joi.string().messages({
+    "string.base": "Issuer ID must be text.",
+  }),
+
+  instrumentId: Joi.string().messages({
+    "string.base": "Instrument ID must be text.",
+  }),
+
+  quantity: Joi.number().positive().messages({
+    "number.base": "Quantity must be a number.",
+    "number.positive": "Quantity must be a positive number.",
+  }),
+
+  purchasePrice: Joi.number().positive().messages({
+    "number.base": "Purchase price must be a number.",
+    "number.positive": "Purchase price must be a positive number.",
+  }),
+
+  currentPrice: Joi.number().positive().messages({
+    "number.base": "Current price must be a number.",
+    "number.positive": "Current price must be a positive number.",
+  }),
+
+  currency: Joi.string().trim().messages({
+    "string.base": "Currency must be text.",
+    "string.empty": "Currency cannot be empty.",
+  }),
+
+  dateOfPurchase: Joi.date().messages({
+    "date.base": "Date of purchase must be a valid date.",
+  }),
+
+  dateOfReport: Joi.date().messages({
+    "date.base": "Date of report must be a valid date.",
+  }),
+})
+  .min(1)
+  .messages({
+    "object.min": "At least one field must be provided for update.",
+  });

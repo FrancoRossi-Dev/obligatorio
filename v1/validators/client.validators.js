@@ -67,3 +67,68 @@ export const createClientSchema = Joi.object({
     )
     .default([]),
 });
+
+export const updateClientSchema = Joi.object({
+  advisorId: Joi.string().messages({
+    "string.empty": "Advisor cannot be empty.",
+  }),
+
+  clientDetails: Joi.object({
+    commercialName: Joi.string().trim().max(100).messages({
+      "string.base": "Commercial name must be text.",
+      "string.empty": "Commercial name cannot be empty.",
+      "string.max": "Commercial name must be at most {#limit} characters long.",
+    }),
+
+    legalName: Joi.string().trim().max(100).messages({
+      "string.base": "Legal name must be text.",
+      "string.empty": "Legal name cannot be empty.",
+      "string.max": "Legal name must be at most {#limit} characters long.",
+    }),
+
+    address: Joi.string().trim().max(200).optional(),
+
+    country: Joi.string().trim().max(100).optional(),
+  }),
+
+  manager: Joi.object({
+    fullName: Joi.string().trim().max(100).messages({
+      "string.base": "Full name must be text.",
+      "string.empty": "Full name cannot be empty.",
+      "string.max": "Full name must be at most {#limit} characters long.",
+    }),
+
+    email: Joi.string().email().trim().max(100).messages({
+      "string.base": "Email must be text.",
+      "string.empty": "Email cannot be empty.",
+      "string.email": "Email must be a valid email address.",
+      "string.max": "Email must be at most {#limit} characters long.",
+    }),
+  }),
+
+  bankAccounts: Joi.array().items(
+    Joi.object({
+      bankId: Joi.string().required().messages({
+        "string.empty": "Bank ID is required.",
+        "any.required": "Bank ID is required.",
+      }),
+      number: Joi.string().trim().required().messages({
+        "string.empty": "Bank account number is required.",
+        "any.required": "Bank account number is required.",
+      }),
+      accountName: Joi.string().trim().required().messages({
+        "string.empty": "Bank account name is required.",
+        "any.required": "Bank account name is required.",
+      }),
+      currency: Joi.string().trim().required().messages({
+        "string.empty": "Currency is required.",
+        "any.required": "Currency is required.",
+      }),
+      isDeleted: Joi.boolean().default(false)
+    }),
+  ),
+})
+  .min(1)
+  .messages({
+    "object.min": "At least one field must be provided for update.",
+  });

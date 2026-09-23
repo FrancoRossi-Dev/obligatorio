@@ -19,6 +19,11 @@ const bankSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    isDeleted: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
   },
   { timestamps: true },
 );

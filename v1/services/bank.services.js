@@ -1,9 +1,13 @@
 import Bank from '../models/bank.model.js';
-import BankAccount from '../models/bank-account.model.js';
 
 export const getBanksService = async () => {
-  const banks = await Bank.find();
+  const banks = await Bank.find({ isDeleted: false });
   return banks;
+};
+
+export const getBankByIDService = async (id) => {
+  const bank = await Bank.findById(id);
+  return bank;
 };
 
 export const createBankService = async (bankData) => {
@@ -18,6 +22,9 @@ export const updateBankService = async (id, bankData) => {
 };
 
 export const deleteBankService = async (id) => {
-  const bank = await Bank.findByIdAndDelete(id);
+  const bank = await Bank.findById(id);
+  if (!bank) return null;
+  bank.isDeleted = true;
+  await bank.save();
   return bank;
 };
