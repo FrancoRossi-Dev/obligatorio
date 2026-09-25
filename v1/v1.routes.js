@@ -6,6 +6,7 @@ import instrumentRoutes from './routes/instrument.routes.js';
 import issuerRoutes from './routes/issuer.routes.js';
 import positionRoutes from './routes/position.routes.js';
 import { authenticateMiddleware } from './middlewares/authenticate.middleware.js';
+import uploadsRouter from './routes/uploads.routes.js';
 
 const router = express.Router({ mergeParams: true });
 
@@ -21,5 +22,6 @@ router.use('/client', clientRoutes);
 router.use('/instrument', instrumentRoutes);
 router.use('/issuer', issuerRoutes);
 router.use('/position', positionRoutes);
+router.use("/uploads", uploadsRouter);
 
 export default router;

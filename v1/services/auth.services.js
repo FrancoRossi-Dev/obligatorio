@@ -31,11 +31,16 @@ export const loginService = async (username, password) => {
 };
 
 export const registerService = async ({ username, password, details }) => {
-  if (await User.exists({ username })) {
-    throw httpError(ERRORS.usernameTaken, { username });
-  }
-  if (await Advisor.exists({ 'details.email': details.email.toLowerCase().trim() })) {
-    throw httpError(ERRORS.emailTaken, { email: details.email });
+
+const usernameExists = await User.exists({ username });
+
+
+if (usernameExists) {
+  throw httpError(ERRORS.usernameTaken, { username });
+}
+
+  if (await Advisor.exists({ 'details.contactEmail': details.contactEmail.toLowerCase().trim() })) {
+    throw httpError(ERRORS.emailTaken, { email: details.contactEmail });
   }
 
   const hashedPassword = await bcrypt.hash(password, Number(process.env.SALT_ROUNDS));
@@ -43,14 +48,17 @@ export const registerService = async ({ username, password, details }) => {
   let advisor;
   try {
     advisor = await Advisor.create({ username, password: hashedPassword, details });
-  } catch (err) {
-    // Concurrent registrations can slip past the checks above; the unique indexes catch them
-    if (err.code === Number(process.env.MONGO_DUPLICATE_KEY)) {
-      const isEmail = 'details.email' in (err.keyPattern ?? {});
-      throw httpError(isEmail ? ERRORS.emailTaken : ERRORS.usernameTaken);
-    }
-    throw err;
   }
+  catch (err) {
+  if (err.code === Number(process.env.MONGO_DUPLICATE_KEY)) {
+    const isEmail = 'details.contactEmail' in (err.keyPattern ?? {});
+
+    throw httpError(isEmail ? ERRORS.emailTaken : ERRORS.usernameTaken);
+  }
+
+  throw err;
+}
+
 
   return { user: toPublicUser(advisor), token: signToken(advisor) };
 };
