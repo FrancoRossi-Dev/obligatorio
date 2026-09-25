@@ -20,26 +20,47 @@ const advisorDetailsSchema = Joi.object({
     .max(100)
     .required()
     .messages(textMessages('Commercial name', 'to present your advisory firm')),
+
   legalName: Joi.string()
     .trim()
     .max(100)
     .required()
     .messages(textMessages('Legal name', 'to register your advisory firm')),
-  address: Joi.string().trim().max(200).messages(textMessages('Address', 'when provided')),
-  country: Joi.string().trim().max(60).messages(textMessages('Country', 'when provided')),
-  email: Joi.string()
+
+  address: Joi.string()
+    .trim()
+    .max(200)
+    .messages(textMessages('Address', 'when provided')),
+
+  country: Joi.string()
+    .trim()
+    .max(60)
+    .messages(textMessages('Country', 'when provided')),
+
+  document: Joi.string()
+    .trim()
+    .required()
+    .messages(textMessages('Document', 'to register your advisory firm')),
+
+  phone: Joi.string()
+    .trim()
+    .required()
+    .messages(textMessages('Phone', 'to contact your advisory firm')),
+
+  contactEmail: Joi.string()
     .trim()
     .email()
     .required()
     .messages({
-      ...textMessages('Email', 'to contact your advisory firm'),
-      'string.email': 'Email must be a valid address.',
+      ...textMessages('Contact email', 'to contact your advisory firm'),
+      'string.email': 'Contact email must be a valid address.',
     }),
 })
   .required()
   .messages({
     'object.base': 'Advisor details must be an object.',
-    'any.required': 'Advisor details are required to register your advisory firm.',
+    'any.required':
+      'Advisor details are required to register your advisory firm.',
   });
 
 export const loginSchema = Joi.object({ username, password });

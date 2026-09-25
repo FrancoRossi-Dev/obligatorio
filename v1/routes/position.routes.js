@@ -14,7 +14,7 @@ const router = express.Router({ mergeParams: true });
 router
   .get('/', getPositions)
   .post('/', validateBodyMiddleware(createPositionSchema), createPosition)
-  .post('/createMultiple', validateMultipleInstruments(), createMultiplePositions);
+ // .post('/createMultiple', validateMultipleInstruments(), createMultiplePositions);
 
 router
   .get('/:id', getPositionById)
