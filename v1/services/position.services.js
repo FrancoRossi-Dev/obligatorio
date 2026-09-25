@@ -1,4 +1,4 @@
-import Position from '../models/Position.model.js';
+import Position from '../models/position.model.js';
 
 export const getPositionsService = async () => {
   const positions = await Position.find({ isDeleted: false });
@@ -14,6 +14,14 @@ export const createPositionService = async (positionData) => {
   const position = new Position(positionData);
   await position.save();
   return position;
+};
+
+export const createPositionsService = async (positionsData) => {
+  const positions = [];
+  for (const positionData of positionsData) {
+    positions.push(await createPositionService(positionData));
+  }
+  return positions;
 };
 
 export const updatePositionService = async (id, positionData) => {

@@ -10,6 +10,11 @@ export const getClientByIdService = async (id) => {
   return client;
 };
 
+export const getClientsByIdsService = async (ids) => {
+  const clients = await Client.find({ _id: { $in: ids }, isDeleted: false });
+  return clients;
+};
+
 export const createClientService = async (clientData) => {
   const client = new Client(clientData);
   await client.save();

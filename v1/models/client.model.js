@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
-// A Client is managed by an Advisor. It has no login of its own.
+// A Client belongs to an Advisor and is day-to-day handled by one of the
+// Advisor's Managers. A Client has no login of its own.
 // Its bank accounts are embedded subdocuments (see bankAccountSchema below).
 
 const clientDetailsSchema = new mongoose.Schema(
@@ -18,21 +19,6 @@ const clientDetailsSchema = new mongoose.Schema(
     },
     country: {
       type: String,
-    },
-  },
-  { _id: false },
-);
-
-const managerSchema = new mongoose.Schema(
-  {
-    fullName: {
-      type: String,
-      required: true,
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
     },
   },
   { _id: false },
@@ -81,8 +67,9 @@ const clientSchema = new mongoose.Schema(
       type: clientDetailsSchema,
       required: true,
     },
-    manager: {
-      type: managerSchema,
+    managerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Manager',
       required: true,
     },
     bankAccounts: {
