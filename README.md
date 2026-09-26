@@ -44,7 +44,7 @@ y el modelo de datos actual (con diagramas) en [Modelo de dominio](#modelo-de-do
 | ABM de Instrumentos (`/v1/instrument`) | ✅ |
 | ABM de Emisores (`/v1/issuer`) | ✅ |
 | ABM de Posiciones (`/v1/position`) | ✅ |
-| ABM de Cuentas bancarias como colección propia (`BankAccount`, límite por plan) | ⬜ (hoy son subdocumentos de `Client`, sin límite de plan aplicado) |
+| ABM de Cuentas bancarias como colección propia (`BankAccount`, límite por plan) | ⬜ (hoy son subdocumentos de `Client`; el límite de plan `base` se aplica al crear/editar clientes, ver `v1/constants/plans.js`) |
 | Subida de imágenes (Cloudinary / Vercel Blob) | ⬜ |
 | Integración API de FX (terceros) | ⬜ |
 | Endpoint de IA generativa (análisis de cartera consolidada) | ⬜ |
@@ -111,7 +111,6 @@ Definidas en `.env` (no se versiona). Ver `.env.example` para la plantilla.
 | `MONGODB_URI` | Cadena de conexión a MongoDB | `mongodb://localhost:27017/abakus` |
 | `JWT_SECRET` | Secreto para firmar los tokens | `una-clave-larga-y-aleatoria` |
 | `JWT_EXPIRES_IN` | Vigencia del token | `1d` |
-| `BASE_PLAN_ACCOUNT_LIMIT` | Máx. de `BankAccount` para el plan `base` (la letra lo llama `plus`; ver nota en `requerimientos-api.md`) | `4` |
 | `CLOUDINARY_URL` | Credenciales de Cloudinary (o config de Vercel Blob) | `cloudinary://key:secret@cloud` |
 | `MARKET_API_BASE_URL` | Base URL del proveedor de cotizaciones | `https://api.frankfurter.app` |
 | `MARKET_API_KEY` | API key del proveedor de cotizaciones (si aplica) | — |

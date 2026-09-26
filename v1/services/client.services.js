@@ -1,7 +1,7 @@
 import Client from '../models/client.model.js';
 
-export const getClientsService = async () => {
-  const clients = await Client.find({ isDeleted: false });
+export const getClientsService = async (filter = {}) => {
+  const clients = await Client.find({ ...filter, isDeleted: false });
   return clients;
 };
 
@@ -9,6 +9,9 @@ export const getClientByIdService = async (id) => {
   const client = await Client.findOne({ _id: id, isDeleted: false });
   return client;
 };
+
+// Advisors can only reach their own clients; other roles reach every client
+export const canAccessClient = (client, { id, role }) => role !== 'advisor' || client.advisorId.equals(id);
 
 export const getClientsByIdsService = async (ids) => {
   const clients = await Client.find({ _id: { $in: ids }, isDeleted: false });
@@ -29,7 +32,11 @@ export const updateClientService = async (id, clientData) => {
   return client;
 };
 
-// Soft delete: the model carries an isDeleted flag
+export const countActiveClientsService = async (advisorId) => {
+  const count = await Client.countDocuments({ advisorId, isDeleted: false });
+  return count;
+};
+
 export const deleteClientService = async (id) => {
   const client = await Client.findOneAndUpdate(
     { _id: id, isDeleted: false },

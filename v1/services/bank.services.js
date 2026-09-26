@@ -1,4 +1,6 @@
+import mongoose from 'mongoose';
 import Bank from '../models/bank.model.js';
+import Client from '../models/client.model.js';
 
 export const getBanksService = async () => {
   const banks = await Bank.find({ isDeleted: false });
@@ -27,4 +29,15 @@ export const deleteBankService = async (id) => {
   bank.isDeleted = true;
   await bank.save();
   return bank;
+};
+
+// Bank accounts are embedded in Client, so they're counted across the advisor's active clients
+export const countActiveBankAccountsService = async (advisorId) => {
+  const [result] = await Client.aggregate([
+    { $match: { advisorId: new mongoose.Types.ObjectId(advisorId), isDeleted: false } },
+    { $unwind: '$bankAccounts' },
+    { $match: { 'bankAccounts.isDeleted': false } },
+    { $count: 'used' },
+  ]);
+  return result?.used ?? 0;
 };

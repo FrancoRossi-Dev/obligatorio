@@ -97,9 +97,7 @@ const manager = await Manager.create({
 });
 console.log(`Created manager "${manager.fullName}".`);
 
-const clientId = new mongoose.Types.ObjectId();
 const client = await Client.create({
-  _id: clientId,
   advisorId: advisor.id,
   clientDetails: {
     commercialName: 'Doe Holdings',
@@ -110,14 +108,12 @@ const client = await Client.create({
   managerId: manager.id,
   bankAccounts: [
     {
-      clientId,
       bankId: banks[0].id,
       number: 'UY-0001-2345',
       accountName: 'Doe Holdings USD',
       currency: 'USD',
     },
     {
-      clientId,
       bankId: banks[1].id,
       number: 'US-9988-7766',
       accountName: 'Doe Holdings Chase USD',

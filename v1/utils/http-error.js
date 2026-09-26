@@ -4,9 +4,23 @@ export const ERRORS = {
   tokenMissing: { status: 401, message: 'An access token is required to use this resource.' },
   tokenInvalid: { status: 401, message: 'The access token is invalid or has expired.' },
   tokenRevoked: { status: 401, message: 'This session has already been closed.' },
+  forbidden: { status: 403, message: 'Your account role does not have access to this resource.' },
+  clientLimitReached: {
+    status: 403,
+    message: 'The base plan client limit has been reached; upgrade to premium to register more clients.',
+  },
+  accountLimitReached: {
+    status: 403,
+    message:
+      'The base plan bank account limit has been reached; upgrade to premium to add more accounts.',
+  },
   routeNotFound: { status: 404, message: 'The requested endpoint does not exist.' },
+  clientNotFound: { status: 404, message: 'The requested client does not exist.' },
+  userNotFound: { status: 404, message: 'The account linked to this session no longer exists.' },
+  advisorNotFound: { status: 422, message: 'The selected advisor does not exist.' },
   usernameTaken: { status: 409, message: 'This username is already registered.' },
   emailTaken: { status: 409, message: 'This email is already linked to an advisor account.' },
+  alreadyPremium: { status: 409, message: 'Your advisor account is already on the premium plan.' },
   internal: { status: 500, message: 'An unexpected error occurred, please try again later.' },
 };
 
