@@ -10,6 +10,9 @@ export const getClientByIdService = async (id) => {
   return client;
 };
 
+// Advisors can only reach their own clients; other roles reach every client
+export const canAccessClient = (client, { id, role }) => role !== 'advisor' || client.advisorId.equals(id);
+
 export const getClientsByIdsService = async (ids) => {
   const clients = await Client.find({ _id: { $in: ids }, isDeleted: false });
   return clients;
