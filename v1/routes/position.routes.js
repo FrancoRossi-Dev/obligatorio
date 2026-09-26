@@ -1,20 +1,17 @@
 import express from 'express';
 import { validateBodyMiddleware } from '../middlewares/validatedBody.middleware.js';
 import {
-  createPosition,
+  createPositions,
   getPositions,
   getPositionById,
   updatePosition,
   deletePosition,
 } from '../controllers/position.controller.js';
-import { createPositionSchema, updatePositionSchema } from '../validators/positions.validators.js';
+import { createPositionsSchema, updatePositionSchema } from '../validators/positions.validators.js';
 
 const router = express.Router({ mergeParams: true });
 
-router
-  .get('/', getPositions)
-  .post('/', validateBodyMiddleware(createPositionSchema), createPosition)
- // .post('/createMultiple', validateMultipleInstruments(), createMultiplePositions);
+router.get('/', getPositions).post('/', validateBodyMiddleware(createPositionsSchema), createPositions);
 
 router
   .get('/:id', getPositionById)

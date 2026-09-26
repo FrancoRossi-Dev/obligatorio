@@ -26,22 +26,10 @@ export const createClientSchema = Joi.object({
     country: Joi.string().trim().max(100).optional(),
   }).required(),
 
-  manager: Joi.object({
-    fullName: Joi.string().trim().max(100).required().messages({
-      "string.base": "Full name must be text.",
-      "string.empty": "Full name is required.",
-      "string.max": "Full name must be at most {#limit} characters long.",
-      "any.required": "Full name is required.",
-    }),
-
-    email: Joi.string().email().trim().max(100).required().messages({
-      "string.base": "Email must be text.",
-      "string.empty": "Email is required.",
-      "string.email": "Email must be a valid email address.",
-      "string.max": "Email must be at most {#limit} characters long.",
-      "any.required": "Email is required.",
-    }),
-  }).required(),
+  managerId: Joi.string().required().messages({
+    "string.empty": "Manager is required.",
+    "any.required": "Manager is required.",
+  }),
 
   bankAccounts: Joi.array()
     .items(
@@ -91,19 +79,8 @@ export const updateClientSchema = Joi.object({
     country: Joi.string().trim().max(100).optional(),
   }),
 
-  manager: Joi.object({
-    fullName: Joi.string().trim().max(100).messages({
-      "string.base": "Full name must be text.",
-      "string.empty": "Full name cannot be empty.",
-      "string.max": "Full name must be at most {#limit} characters long.",
-    }),
-
-    email: Joi.string().email().trim().max(100).messages({
-      "string.base": "Email must be text.",
-      "string.empty": "Email cannot be empty.",
-      "string.email": "Email must be a valid email address.",
-      "string.max": "Email must be at most {#limit} characters long.",
-    }),
+  managerId: Joi.string().messages({
+    "string.empty": "Manager cannot be empty.",
   }),
 
   bankAccounts: Joi.array().items(

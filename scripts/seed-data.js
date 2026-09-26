@@ -10,7 +10,8 @@ import Bank from '../v1/models/bank.model.js';
 import Client from '../v1/models/client.model.js';
 import Instrument from '../v1/models/instrument.model.js';
 import Issuer from '../v1/models/issuer.model.js';
-import Position from '../v1/models/Position.model.js';
+import Manager from '../v1/models/manager.model.js';
+import Position from '../v1/models/position.model.js';
 import User, { Advisor } from '../v1/models/user.model.js';
 
 const SEED_ADVISOR_USERNAME = 'demo.advisor';
@@ -30,6 +31,7 @@ if (previousAdvisor) {
   const previousClients = await Client.find({ advisorId: previousAdvisor.id });
   await Position.deleteMany({ clientId: { $in: previousClients.map((client) => client.id) } });
   await Client.deleteMany({ advisorId: previousAdvisor.id });
+  await Manager.deleteMany({ advisorId: previousAdvisor.id });
   await User.deleteOne({ _id: previousAdvisor.id });
   console.log('Removed previously seeded demo data.');
 }
@@ -88,6 +90,13 @@ console.log(`Created ${instruments.length} instruments.`);
 
 const [appleStock, treasuryBond, balancedFund, usdCash] = instruments;
 
+const manager = await Manager.create({
+  fullName: 'John Doe',
+  email: 'john.doe@doeholdings.com',
+  advisorId: advisor.id,
+});
+console.log(`Created manager "${manager.fullName}".`);
+
 const clientId = new mongoose.Types.ObjectId();
 const client = await Client.create({
   _id: clientId,
@@ -98,10 +107,7 @@ const client = await Client.create({
     address: 'Av. 18 de Julio 1234, Montevideo',
     country: 'Uruguay',
   },
-  manager: {
-    fullName: 'John Doe',
-    email: 'john.doe@doeholdings.com',
-  },
+  managerId: manager.id,
   bankAccounts: [
     {
       clientId,
