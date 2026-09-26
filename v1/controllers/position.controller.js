@@ -5,7 +5,7 @@ import {
   getPositionsService,
   updatePositionService,
 } from '../services/position.services.js';
-import { getClientsByIdsService } from '../services/client.services.js';
+import { canAccessClient, getClientsByIdsService } from '../services/client.services.js';
 
 const POSITION_MESSAGES = {
   invalidReferences: 'One or more positions reference a client or bank account that was not found.',
@@ -26,11 +26,9 @@ export const getPositions = async (req, res) => {
 
 // Returns one error per position whose client isn't the requester's, or whose bank account
 // isn't an active account of that client; another advisor's client is reported as not found
-const findReferenceErrors = (positionsData, clients, { id, role }) => {
+const findReferenceErrors = (positionsData, clients, user) => {
   const ownClients = new Map(
-    clients
-      .filter((client) => role !== 'advisor' || client.advisorId.equals(id))
-      .map((client) => [client.id, client]),
+    clients.filter((client) => canAccessClient(client, user)).map((client) => [client.id, client]),
   );
 
   const errors = [];

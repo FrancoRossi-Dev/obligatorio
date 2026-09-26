@@ -57,6 +57,9 @@ const PositionSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Every report looks up one client's positions, usually within a month
+PositionSchema.index({ clientId: 1, dateOfReport: 1 });
+
 const Position = mongoose.model('Position', PositionSchema, 'positions');
 
 export default Position;
