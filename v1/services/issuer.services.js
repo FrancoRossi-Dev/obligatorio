@@ -16,6 +16,16 @@ export const createIssuerService = async (issuerData) => {
   return issuer;
 };
 
+// Upsert keyed on the unique legalName, so concurrent imports of the same issuer can't collide
+export const findOrCreateIssuerService = async (legalName) => {
+  const issuer = await Issuer.findOneAndUpdate(
+    { legalName },
+    { $setOnInsert: { legalName, commercialName: legalName } },
+    { upsert: true, returnDocument: 'after' },
+  );
+  return issuer;
+};
+
 export const updateIssuerService = async (id, issuerData) => {
   const issuer = await Issuer.findByIdAndUpdate(id, issuerData, { returnDocument: 'after' });
   return issuer;

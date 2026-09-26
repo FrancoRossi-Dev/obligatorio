@@ -42,6 +42,19 @@ const instrumentSchema = new mongoose.Schema(
         return this.type === 'fund';
       },
     },
+    // Market identifiers; bank imports resolve instruments by ISIN through OpenFIGI.
+    // Cash and manually created instruments may have none, hence sparse.
+    isin: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    figi: {
+      type: String,
+    },
+    ticker: {
+      type: String,
+    },
     isDeleted: {
       type: Boolean,
       default: false,

@@ -1,15 +1,11 @@
-import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User, { Advisor } from '../models/user.model.js';
-import RevokedToken from '../models/revoked-token.model.js';
 import { ERRORS, httpError } from '../utils/http-error.js';
 
-// The unique token id (jti) is what logout revokes
 const signToken = (user) =>
   jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
-    jwtid: randomUUID(),
   });
 
 const toPublicUser = (user) => {
@@ -61,9 +57,4 @@ if (usernameExists) {
 
 
   return { user: toPublicUser(advisor), token: signToken(advisor) };
-};
-
-// Revokes the token until it would have expired anyway; safe to call more than once
-export const logoutService = async (jti, exp) => {
-  await RevokedToken.updateOne({ jti }, { jti, expiresAt: new Date(exp * 1000) }, { upsert: true });
 };
