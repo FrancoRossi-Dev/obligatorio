@@ -21,10 +21,21 @@ export const createPositionSchema = Joi.object({
     "string.base": "Issuer ID must be text.",
   }),
 
-  instrumentId: Joi.string().required().messages({
+  // Bank imports identify the security by ISIN; manual and cash positions by instrumentId
+  instrumentId: Joi.string().messages({
     "string.base": "Instrument ID must be text.",
-    "string.empty": "Instrument ID is required.",
-    "any.required": "Instrument ID is required.",
+    "string.empty": "Instrument ID cannot be empty.",
+  }),
+
+  isin: Joi.string().trim().uppercase().pattern(/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/).messages({
+    "string.base": "ISIN must be text.",
+    "string.empty": "ISIN cannot be empty.",
+    "string.pattern.base": "ISIN must be a 12-character code such as US0378331005.",
+  }),
+
+  // Only read when an ISIN resolves to a fund Abakus has not registered yet
+  fundComposition: Joi.string().valid("equity", "bond", "balanced", "alternative").messages({
+    "any.only": "Fund composition must be one of 'equity', 'bond', 'balanced', or 'alternative'.",
   }),
 
   quantity: Joi.number().positive().required().messages({
@@ -58,7 +69,14 @@ export const createPositionSchema = Joi.object({
   dateOfReport: Joi.date().optional().messages({
     "date.base": "Date of report must be a valid date.",
   }),
-});
+})
+  .xor("instrumentId", "isin")
+  .with("fundComposition", "isin")
+  .messages({
+    "object.missing": "Each position must identify its instrument by either an instrument ID or an ISIN.",
+    "object.xor": "Each position must identify its instrument by an instrument ID or an ISIN, not both.",
+    "object.with": "Fund composition can only be provided alongside an ISIN.",
+  });
 
 // Positions are always created in bulk: the body is a list with at least one position
 export const createPositionsSchema = Joi.array().items(createPositionSchema).min(1).required().messages({

@@ -1,4 +1,4 @@
-import { loginService, logoutService, registerService } from '../services/auth.services.js';
+import { loginService, registerService } from '../services/auth.services.js';
 
 const AUTH_MESSAGES = {
   login: 'Signed in successfully.',
@@ -17,8 +17,7 @@ export const registerUser = async (req, res) => {
   res.status(201).json({ message: AUTH_MESSAGES.register, user, token });
 };
 
+// Tokens are stateless, so signing out is up to the client discarding its token
 export const logoutUser = async (req, res) => {
-  const { jti, exp } = req.decoded;
-  await logoutService(jti, exp);
   res.status(200).json({ message: AUTH_MESSAGES.logout });
 };
