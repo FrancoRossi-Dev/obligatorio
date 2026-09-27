@@ -1,10 +1,10 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const PositionSchema = new mongoose.Schema(
   {
     clientId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Client',
+      ref: "Client",
       required: true,
     },
     // References a subdocument in Client.bankAccounts[], not a top-level collection,
@@ -15,14 +15,14 @@ const PositionSchema = new mongoose.Schema(
     },
     issuerId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Issuer',
+      ref: "Issuer",
       required() {
-        return this.type === 'stock' || this.type === 'bond';
+        return this.type === "stock" || this.type === "bond";
       },
     },
     instrumentId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Instrument',
+      ref: "Instrument",
       required: true,
     },
     quantity: {
@@ -38,6 +38,10 @@ const PositionSchema = new mongoose.Schema(
     },
     currency: {
       type: String,
+      required: true,
+    },
+    marketValue: {
+      type: Number,
       required: true,
     },
     dateOfPurchase: {
@@ -57,6 +61,9 @@ const PositionSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-const Position = mongoose.model('Position', PositionSchema, 'positions');
+// Every report looks up one client's positions, usually within a month
+PositionSchema.index({ clientId: 1, dateOfReport: 1 });
+
+const Position = mongoose.model("Position", PositionSchema, "positions");
 
 export default Position;

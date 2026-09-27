@@ -18,10 +18,16 @@ export const ERRORS = {
   clientNotFound: { status: 404, message: 'The requested client does not exist.' },
   userNotFound: { status: 404, message: 'The account linked to this session no longer exists.' },
   advisorNotFound: { status: 422, message: 'The selected advisor does not exist.' },
+  routeNotFound: { status: 404, message: 'The requested endpoint does not exist.' },
+  clientNotFound: { status: 404, message: 'The requested client does not exist.' },
   usernameTaken: { status: 409, message: 'This username is already registered.' },
   emailTaken: { status: 409, message: 'This email is already linked to an advisor account.' },
   alreadyPremium: { status: 409, message: 'Your advisor account is already on the premium plan.' },
   internal: { status: 500, message: 'An unexpected error occurred, please try again later.' },
+  instrumentLookupUnavailable: {
+    status: 503,
+    message: 'The instrument reference service is unavailable, please try again later.',
+  },
 };
 
 export const httpError = ({ status, message }, details = null) => {
