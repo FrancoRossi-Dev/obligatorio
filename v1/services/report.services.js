@@ -1,4 +1,4 @@
-import Position from '../models/position.model.js';
+import Position from '../models/Position.model.js';
 import { currentMonthFilter, monthOf } from '../utils/date.js';
 import { round, toPercentage } from '../utils/math.js';
 import {
