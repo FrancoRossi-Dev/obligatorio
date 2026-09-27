@@ -330,6 +330,8 @@ const positions = rawPositions.map((row) => {
     purchasePrice: row.costPrice,
 
     currentPrice: row.marketPrice,
+    
+    marketValue: row.marketValue,
 
     currency: row.currency,
 
