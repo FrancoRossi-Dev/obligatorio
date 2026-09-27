@@ -1,4 +1,4 @@
-import Position from '../models/Position.model.js';
+import Position from '../models/position.model.js';
 
 export const getPositionsService = async () => {
   const positions = await Position.find({ isDeleted: false });

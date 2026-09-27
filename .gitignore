@@ -7,3 +7,6 @@ npm-debug.log*
 CLAUDE.md
 CLAUDE.local.md
 .mcp.json
+claude/
+.claude*
+**/CLAUDE*.md

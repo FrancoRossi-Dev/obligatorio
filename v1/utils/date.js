@@ -1,9 +1,9 @@
 export const monthOf = (date) => date.toISOString().slice(0, 7);
 
-export const currentMonthFilter = () => {
-  const now = new Date();
-  return {
-    $gte: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
-    $lt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)),
-  };
+export const toIsoDate = (date) => date.toISOString().slice(0, 10);
+
+export const daysAgo = (days) => {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - days);
+  return date;
 };

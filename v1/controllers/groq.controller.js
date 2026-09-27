@@ -1,31 +1,12 @@
-import {
-  analizarNoticiasPortfolioService,
-} from '../services/groq.services.js';
+import { analizarNoticiasPortfolioService } from '../services/groq.services.js';
 
-export const analizarNoticiasPortfolio = async (
-  req,
-  res,
-) => {
-  try {
-    const { clientId } = req.params;
+// req.client is loaded and access-checked by ownedClientMiddleware; errors reach errorMiddleware
+export const analizarNoticiasPortfolio = async (req, res) => {
+  const result = await analizarNoticiasPortfolioService(req.client);
+  res.status(200).json(result);
+};
 
-    const result =
-      await analizarNoticiasPortfolioService(clientId);
-
-    return res.status(200).json(result);
- } catch (error) {
-  console.error(error);
-
-  //Too Many Requests
-  if (error.status === 429) {
-    return res.status(429).json({
-      message:
-        'Se alcanzó temporalmente el límite de consultas de IA. Intente nuevamente más tarde.',
-    });
-  }
-
-  return res.status(500).json({
-    message: 'Ocurrió un error al analizar la cartera.',
-  });
-}
+export const analizarNoticiasPortfolioES = async (req, res) => {
+  const result = await analizarNoticiasPortfolioService(req.client, 'es');
+  res.status(200).json(result);
 };
