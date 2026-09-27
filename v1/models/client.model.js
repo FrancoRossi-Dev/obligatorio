@@ -24,13 +24,9 @@ const clientDetailsSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// No clientId: an embedded account already belongs to the client that holds it
 const bankAccountSchema = new mongoose.Schema(
   {
-    clientId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Client',
-      required: true,
-    },
     bankId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Bank',
