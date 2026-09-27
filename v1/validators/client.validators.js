@@ -1,9 +1,18 @@
 import Joi from "joi";
 
+// Lowercased so ids compare equal to the ones Mongoose returns
+export const clientParamsSchema = Joi.object({
+  clientId: Joi.string().hex().length(24).lowercase().required().messages({
+    "string.hex": "Client id is not valid.",
+    "string.length": "Client id is not valid.",
+    "any.required": "Client id is required.",
+  }),
+});
+
 export const createClientSchema = Joi.object({
-  advisorId: Joi.string().required().messages({
-    "string.empty": "Advisor is required.",
-    "any.required": "Advisor is required.",
+  // Taken from the token for advisors; only an admin sends it (see clientAdvisor.middleware.js)
+  advisorId: Joi.string().messages({
+    "string.empty": "Advisor cannot be empty.",
   }),
 
   clientDetails: Joi.object({

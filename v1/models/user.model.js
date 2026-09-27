@@ -24,6 +24,10 @@ const userSchema = new mongoose.Schema(
     lastConnection: {
       type: Date,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   baseOptions,
 );

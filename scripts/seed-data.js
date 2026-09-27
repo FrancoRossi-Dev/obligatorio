@@ -214,6 +214,31 @@ const manager = await Manager.create({
 });
 console.log(`Created manager "${manager.fullName}".`);
 
+const client = await Client.create({
+  advisorId: advisor.id,
+  clientDetails: {
+    commercialName: 'Doe Holdings',
+    legalName: 'John Doe Holdings SRL',
+    address: 'Av. 18 de Julio 1234, Montevideo',
+    country: 'Uruguay',
+  },
+  managerId: manager.id,
+  bankAccounts: [
+    {
+      bankId: banks[0].id,
+      number: 'UY-0001-2345',
+      accountName: 'Doe Holdings USD',
+      currency: 'USD',
+    },
+    {
+      bankId: banks[1].id,
+      number: 'US-9988-7766',
+      accountName: 'Doe Holdings Chase USD',
+      currency: 'USD',
+    },
+  ],
+});
+console.log(`Created client "${client.clientDetails.commercialName}" with ${client.bankAccounts.length} bank accounts.`);
 //lo lee del precarga
 const clientNames = [
   ...new Set(

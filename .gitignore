@@ -2,7 +2,7 @@ node_modules/
 .env
 npm-debug.log*
 
-# Claude Code
+# Claude Code files
 .claude/
 CLAUDE.md
 CLAUDE.local.md
@@ -10,3 +10,5 @@ CLAUDE.local.md
 claude/
 .claude*
 **/CLAUDE*.md
+/claude/
+/plans/
