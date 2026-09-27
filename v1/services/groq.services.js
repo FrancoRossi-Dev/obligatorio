@@ -1,9 +1,9 @@
 import { Groq } from 'groq-sdk';
 import 'dotenv/config';
-import { findLatestPositionRows } from './report.services.js';
 import { daysAgo, toIsoDate } from '../utils/date.js';
 import { ERRORS, httpError } from '../utils/http-error.js';
-import { buildAllocation, buildTotals, byInstrument, toClientSummary } from '../utils/reportHelpers.js';
+
+// Provider layer for the client news report: only this file knows the analysis runs on Groq.
 
 // Created on first use: the SDK throws when GROQ_API_KEY is missing, and doing that at import time
 // would stop the whole API from starting instead of only this endpoint
@@ -17,30 +17,12 @@ const getGroq = () => {
 };
 
 const MODEL = 'openai/gpt-oss-120b';
-const TOP_POSITIONS = 3;
 const NEWS_WINDOW_DAYS = 30;
 const NEWS_PER_INSTRUMENT = 3;
 
 // Citation markers the model writes, e.g. 【2†L6-L10】; they point into its own browsing session,
 // so they mean nothing to the client. Sources are returned separately instead.
 const CITATION_MARKER = /【[^】]*】/g;
-
-export const obtenerConsultaGroqService = async (messages) => {
-
-    const chatCompletion = await getGroq().chat.completions.create({
-    "messages": [
-        {
-        "role": "user",
-        "content": messages
-        },
-
-    ],
-    "model": "openai/gpt-oss-120b"
-    });
-
-return chatCompletion;
-
-};
 
 // browser_search has no date filter, so the model gets explicit dates instead of "the last 30 days":
 // its own sense of "today" comes from its training data and can be months off
@@ -93,7 +75,7 @@ Act as a financial analyst supporting a wealth advisor on the Abakus platform.
 Today's date is ${to}.
 
 Search the web for RECENT information and news about the following
-financial instruments, which are the ${TOP_POSITIONS} largest positions
+financial instruments, which are the ${topPositions.length} largest positions
 in a client's portfolio (marketValue in USD, percentage = share of
 the portfolio):
 
@@ -155,7 +137,7 @@ FOR EACH INSTRUMENT:
    to the client.
 
 Finish with an OVERALL CONCLUSION on which recent events could be
-relevant to the ${TOP_POSITIONS} largest positions and what combined
+relevant to the ${topPositions.length} largest positions and what combined
 share of the portfolio they represent.
 
 Do not make buy or sell recommendations.
@@ -172,7 +154,7 @@ La fecha de hoy es ${to}.
 
 Debes buscar en Internet información y noticias RECIENTES sobre
 los siguientes instrumentos financieros, que representan las
-${TOP_POSITIONS} principales posiciones de la cartera de un cliente
+${topPositions.length} principales posiciones de la cartera de un cliente
 (marketValue en USD, percentage = porcentaje de la cartera):
 
 ${JSON.stringify(topPositions, null, 2)}
@@ -235,7 +217,7 @@ PARA CADA INSTRUMENTO:
 
 Finalmente realiza una CONCLUSIÓN GENERAL explicando qué
 acontecimientos recientes podrían ser relevantes para las
-${TOP_POSITIONS} principales posiciones y qué porcentaje conjunto
+${topPositions.length} principales posiciones y qué porcentaje conjunto
 representan dentro de la cartera.
 
 No hagas recomendaciones de compra o venta.
@@ -283,19 +265,19 @@ const requestAnalysis = async (prompt) => {
 
 const PROMPTS = { en: buildPrompt, es: buildPromptES };
 
-// Like the other client reports, only the latest report of each holding counts
-export const analizarNoticiasPortfolioService = async (client, language = 'en') => {
-  const rows = await findLatestPositionRows(client);
-  if (rows.length === 0) throw httpError(ERRORS.noRecentPositions);
-
-  const totals = buildTotals(rows);
-  // Cash can rank among the top positions and the model will then search news for it, which
-  // spends a search on nothing useful. Filtering out type 'cash' here would avoid it; left as is
-  // for now so the percentages match the composition report.
-  const topPositions = buildAllocation(rows, totals.marketValue, byInstrument).slice(0, TOP_POSITIONS);
-
+// Searches recent news on the given positions (the client's largest) and returns the analysis with
+// its sources. Throws a controlled 429/503 when the provider is rate-limited or unavailable.
+export const analyzePortfolioNewsService = async (topPositions, language = 'en') => {
   const newsWindow = getNewsWindow();
-  const promptPositions = topPositions.map(({ id, ...position }) => position);
+  // Only what the model needs to search and weigh the news; internal ids stay out of the prompt
+  const promptPositions = topPositions.map(({ name, ticker, isin, type, marketValue, percentage }) => ({
+    name,
+    ticker,
+    isin,
+    type,
+    marketValue,
+    percentage,
+  }));
   const completion = await requestAnalysis(PROMPTS[language](promptPositions, newsWindow));
   const [choice] = completion.choices;
   const content = choice?.message?.content?.trim();
@@ -309,13 +291,8 @@ export const analizarNoticiasPortfolioService = async (client, language = 'en') 
   const analysis = content.replace(CITATION_MARKER, '').trim();
 
   return {
-    client: toClientSummary(client),
     language,
     newsWindow,
-    portfolio: {
-      totalMarketValue: totals.marketValue,
-      topPositions,
-    },
     analysis,
     ...splitSources(analysis, collectConsultedSources(choice.message.executed_tools)),
   };

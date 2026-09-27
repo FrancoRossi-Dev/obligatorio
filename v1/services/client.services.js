@@ -24,8 +24,17 @@ export const createClientService = async (clientData) => {
   return client;
 };
 
+// clientDetails is sent partially, so each field is set on its own path ('clientDetails.country');
+// setting the whole object would replace the subdocument and drop the fields that were not sent.
+// bankAccounts, by contrast, is replaced as a whole on purpose (see planLimit.middleware.js).
+const toClientUpdate = ({ clientDetails, ...clientData }) => {
+  if (!clientDetails) return clientData;
+  const detailPaths = Object.entries(clientDetails).map(([field, value]) => [`clientDetails.${field}`, value]);
+  return { ...clientData, ...Object.fromEntries(detailPaths) };
+};
+
 export const updateClientService = async (id, clientData) => {
-  const client = await Client.findOneAndUpdate({ _id: id, isDeleted: false }, clientData, {
+  const client = await Client.findOneAndUpdate({ _id: id, isDeleted: false }, toClientUpdate(clientData), {
     returnDocument: 'after',
     runValidators: true,
   });

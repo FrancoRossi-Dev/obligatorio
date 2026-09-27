@@ -17,6 +17,13 @@ export const clientInstrumentReportParamsSchema = Joi.object({
   instrumentId: objectId('Instrument'),
 });
 
+// The news analysis is written in English unless Spanish is requested
+export const clientNewsReportQuerySchema = Joi.object({
+  lang: Joi.string().valid('en', 'es').default('en').messages({
+    'any.only': "Language must be 'en' or 'es'.",
+  }),
+});
+
 export const clientIssuerReportParamsSchema = Joi.object({
   clientId: objectId('Client'),
   issuerId: objectId('Issuer'),

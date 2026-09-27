@@ -16,10 +16,11 @@ export const ERRORS = {
   },
   routeNotFound: { status: 404, message: 'The requested endpoint does not exist.' },
   clientNotFound: { status: 404, message: 'The requested client does not exist.' },
+  managerNotFound: { status: 404, message: 'The requested manager does not exist.' },
+  positionNotFound: { status: 404, message: 'The requested position does not exist.' },
   userNotFound: { status: 404, message: 'The account linked to this session no longer exists.' },
   advisorNotFound: { status: 422, message: 'The selected advisor does not exist.' },
-  routeNotFound: { status: 404, message: 'The requested endpoint does not exist.' },
-  clientNotFound: { status: 404, message: 'The requested client does not exist.' },
+  managerNotInTeam: { status: 422, message: "The selected manager is not part of the advisor's team." },
   noRecentPositions: {
     status: 404,
     message: 'No positions have been reported for this client in the last 30 days.',

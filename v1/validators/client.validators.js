@@ -10,9 +10,11 @@ export const clientParamsSchema = Joi.object({
 });
 
 export const createClientSchema = Joi.object({
-  // Taken from the token for advisors; only an admin sends it (see clientAdvisor.middleware.js)
-  advisorId: Joi.string().messages({
+  // Taken from the token for advisors; only an admin sends it (see advisor.middleware.js)
+  advisorId: Joi.string().hex().length(24).messages({
     "string.empty": "Advisor cannot be empty.",
+    "string.hex": "Advisor id is not valid.",
+    "string.length": "Advisor id is not valid.",
   }),
 
   clientDetails: Joi.object({
@@ -35,8 +37,10 @@ export const createClientSchema = Joi.object({
     country: Joi.string().trim().max(100).optional(),
   }).required(),
 
-  managerId: Joi.string().required().messages({
+  managerId: Joi.string().hex().length(24).required().messages({
     "string.empty": "Manager is required.",
+    "string.hex": "Manager id is not valid.",
+    "string.length": "Manager id is not valid.",
     "any.required": "Manager is required.",
   }),
 
@@ -66,8 +70,10 @@ export const createClientSchema = Joi.object({
 });
 
 export const updateClientSchema = Joi.object({
-  advisorId: Joi.string().messages({
+  advisorId: Joi.string().hex().length(24).messages({
     "string.empty": "Advisor cannot be empty.",
+    "string.hex": "Advisor id is not valid.",
+    "string.length": "Advisor id is not valid.",
   }),
 
   clientDetails: Joi.object({
@@ -88,8 +94,10 @@ export const updateClientSchema = Joi.object({
     country: Joi.string().trim().max(100).optional(),
   }),
 
-  managerId: Joi.string().messages({
+  managerId: Joi.string().hex().length(24).messages({
     "string.empty": "Manager cannot be empty.",
+    "string.hex": "Manager id is not valid.",
+    "string.length": "Manager id is not valid.",
   }),
 
   bankAccounts: Joi.array().items(

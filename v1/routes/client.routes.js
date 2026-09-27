@@ -2,10 +2,8 @@ import express from 'express';
 import { validateBodyMiddleware } from '../middlewares/validatedBody.middleware.js';
 import { validateParamsMiddleware } from '../middlewares/validatedParams.middleware.js';
 import { ownedClientMiddleware } from '../middlewares/ownedClient.middleware.js';
-import {
-  assignClientAdvisorMiddleware,
-  lockClientAdvisorMiddleware,
-} from '../middlewares/clientAdvisor.middleware.js';
+import { assignAdvisorMiddleware, lockAdvisorMiddleware } from '../middlewares/advisor.middleware.js';
+import { clientManagerMiddleware } from '../middlewares/clientManager.middleware.js';
 import {
   createClientPlanLimitMiddleware,
   updateClientPlanLimitMiddleware,
@@ -32,8 +30,9 @@ router
   .post(
     '/',
     validateBodyMiddleware(createClientSchema),
-    assignClientAdvisorMiddleware,
+    assignAdvisorMiddleware,
     createClientPlanLimitMiddleware,
+    clientManagerMiddleware,
     createClient,
   );
 
@@ -43,8 +42,9 @@ router
     '/:clientId',
     ownedClient,
     validateBodyMiddleware(updateClientSchema),
-    lockClientAdvisorMiddleware,
+    lockAdvisorMiddleware,
     updateClientPlanLimitMiddleware,
+    clientManagerMiddleware,
     updateClient,
   )
   .delete('/:clientId', ownedClient, deleteClient);

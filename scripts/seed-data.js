@@ -55,13 +55,13 @@ const advisor = await Advisor.create({
   username: SEED_ADVISOR_USERNAME,
   password: hashedPassword,
   details: {
-    comercialName: 'Rossi Wealth Advisors',
-    legalName: 'Rossi Wealth Advisors LLC',
+    comercialName: 'Straw Hat Wealth Advisors',
+    legalName: 'Straw Hat Crew Wealth Advisors LLC',
     address: '1200 Brickell Ave, Miami, FL',
     country: 'USA',
     document: 'US-EIN-88-1234567',
     phone: '+1-305-555-0100',
-    contactEmail: 'contact@rossiwealth.com',
+    contactEmail: 'contact@strawhatcrew.com',
   },
   planTier: 'premium',
 });
@@ -207,38 +207,13 @@ const instrumentByIsin = new Map(
   ]),
 );
 
-const manager = await Manager.create({
-  fullName: 'John Doe',
-  email: 'john.doe@doeholdings.com',
-  advisorId: advisor.id,
-});
-console.log(`Created manager "${manager.fullName}".`);
+const managers = await Manager.create([
+  { fullName: 'Monkey D. Luffy', email: 'monkey.d.luffy@strawhatcrew.com', advisorId: advisor.id },
+  { fullName: 'Nico Robin', email: 'nico.robin@strawhatcrew.com', advisorId: advisor.id },
+  { fullName: 'Roronoa Zoro', email: 'roronoa.zoro@strawhatcrew.com', advisorId: advisor.id },
+]);
+console.log(`Created ${managers.length} managers.`);
 
-const client = await Client.create({
-  advisorId: advisor.id,
-  clientDetails: {
-    commercialName: 'Doe Holdings',
-    legalName: 'John Doe Holdings SRL',
-    address: 'Av. 18 de Julio 1234, Montevideo',
-    country: 'Uruguay',
-  },
-  managerId: manager.id,
-  bankAccounts: [
-    {
-      bankId: banks[0].id,
-      number: 'UY-0001-2345',
-      accountName: 'Doe Holdings USD',
-      currency: 'USD',
-    },
-    {
-      bankId: banks[1].id,
-      number: 'US-9988-7766',
-      accountName: 'Doe Holdings Chase USD',
-      currency: 'USD',
-    },
-  ],
-});
-console.log(`Created client "${client.clientDetails.commercialName}" with ${client.bankAccounts.length} bank accounts.`);
 //lo lee del precarga
 const clientNames = [
   ...new Set(
@@ -279,7 +254,8 @@ for (const clientName of clientNames) {
       country: 'Uruguay',
     },
 
-    managerId: manager.id,
+    // Round-robin, so every run gives each manager the same clients
+    managerId: managers[clients.length % managers.length].id,
 
     bankAccounts: uniqueAccounts.map((account) => ({
       clientId,

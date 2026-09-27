@@ -1,5 +1,14 @@
 import Joi from "joi";
 
+// Lowercased so ids compare equal to the ones Mongoose returns
+export const positionParamsSchema = Joi.object({
+  positionId: Joi.string().hex().length(24).lowercase().required().messages({
+    "string.hex": "Position id is not valid.",
+    "string.length": "Position id is not valid.",
+    "any.required": "Position id is required.",
+  }),
+});
+
 export const createPositionSchema = Joi.object({
   clientId: Joi.string().hex().length(24).required().messages({
     "string.base": "Client ID must be text.",
@@ -55,6 +64,12 @@ export const createPositionSchema = Joi.object({
     "number.positive": "Current price must be a positive number.",
   }),
 
+  // As reported by the bank statement; when omitted it is calculated from quantity and price
+  marketValue: Joi.number().positive().optional().messages({
+    "number.base": "Market value must be a number.",
+    "number.positive": "Market value must be a positive number.",
+  }),
+
   currency: Joi.string().trim().required().messages({
     "string.base": "Currency must be text.",
     "string.empty": "Currency is required.",
@@ -86,12 +101,17 @@ export const createPositionsSchema = Joi.array().items(createPositionSchema).min
 });
 
 export const updatePositionSchema = Joi.object({
-  clientId: Joi.string().messages({
+  // Moving a position is checked against the requester's clients (see updatePosition)
+  clientId: Joi.string().hex().length(24).lowercase().messages({
     "string.base": "Client ID must be text.",
+    "string.hex": "Client ID is not valid.",
+    "string.length": "Client ID is not valid.",
   }),
 
-  bankAccountId: Joi.string().messages({
+  bankAccountId: Joi.string().hex().length(24).lowercase().messages({
     "string.base": "Bank account ID must be text.",
+    "string.hex": "Bank account ID is not valid.",
+    "string.length": "Bank account ID is not valid.",
   }),
 
   issuerId: Joi.string().messages({
@@ -115,6 +135,11 @@ export const updatePositionSchema = Joi.object({
   currentPrice: Joi.number().positive().messages({
     "number.base": "Current price must be a number.",
     "number.positive": "Current price must be a positive number.",
+  }),
+
+  marketValue: Joi.number().positive().messages({
+    "number.base": "Market value must be a number.",
+    "number.positive": "Market value must be a positive number.",
   }),
 
   currency: Joi.string().trim().messages({

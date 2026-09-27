@@ -10,7 +10,6 @@ import reportRoutes from './routes/reports.routes.js';
 import userRoutes from './routes/user.routes.js';
 import { authenticateMiddleware } from './middlewares/authenticate.middleware.js';
 import uploadsRouter from './routes/uploads.routes.js';
-import groqRouter from './routes/groq.routes.js';
 
 const router = express.Router({ mergeParams: true });
 
@@ -30,6 +29,5 @@ router.use('/position', positionRoutes);
 router.use('/report', reportRoutes);
 router.use('/user', userRoutes);
 router.use('/uploads', uploadsRouter);
-router.use('/groq', groqRouter);
 
 export default router;

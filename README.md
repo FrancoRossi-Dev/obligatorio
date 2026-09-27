@@ -201,10 +201,10 @@ equivalencia:
 | Usuario común | `User` con discriminador `role: "advisor"` (`Advisor`) | la letra dice `user`, el código usa `advisor` |
 | Administrador | `User` con discriminador `role: "admin"` (`Admin`) | catálogo de bancos/emisores |
 | Empresa / cliente del asesor | `Client` | sin login propio; `advisorId` la vincula a su `Advisor` |
-| Ejecutivo de cuenta | `Manager` | empleado del `Advisor` (sin login propio); cada `Client` tiene un `managerId`, un `Manager` puede atender varios clientes |
-| Banco (categoría) | `Bank` | catálogo, alta reservada a `admin` |
+| Ejecutivo de cuenta | `Manager` | empleado del `Advisor` (sin login propio); cada `Client` tiene un `managerId`, un `Manager` puede atender varios clientes. El `managerId` de un cliente tiene que ser del mismo advisor (422 si no) |
+| Banco (categoría) | `Bank` | catálogo: lo lee cualquier usuario, solo `admin` lo crea, modifica o borra (403 para `advisor`) |
 | Cuenta bancaria | `Client.bankAccounts[]` (subdocumento embebido) | no es colección propia — ver limitación abajo |
-| Emisor de un instrumento | `Issuer` | acción/corporación o gobierno; distinto de `Client` |
+| Emisor de un instrumento | `Issuer` | acción/corporación o gobierno; distinto de `Client`. Mismo criterio que `Bank`: escritura solo `admin` |
 | Instrumento financiero | `Instrument` | tipo único con discriminación por `type` (`stock`\|`bond`\|`fund`\|`cash`) |
 | Posición | `Position` | tenencia de un `Instrument` en una `bankAccount` de un `Client`, con cantidad y precios |
 | Plan `plus` | `Advisor.planTier: "premium"` | la letra dice `plus`, el modelo usa `premium` |
@@ -354,6 +354,7 @@ de un único cliente:
 | `/v1/report/client/:clientId` | Reporte completo: posiciones del mes, totales (costo, valor de mercado, resultado no realizado) y composición |
 | `/v1/report/client/:clientId/composition` | Totales y distribución de la cartera por tipo de instrumento, instrumento y emisor |
 | `/v1/report/client/:clientId/historic` | Totales por mes, variación del valor de mercado contra el mes anterior y distribución por tipo de instrumento |
+| `/v1/report/client/:clientId/news` | Análisis con IA generativa (Groq + búsqueda web) de las noticias recientes sobre las 3 mayores posiciones del cliente, con sus fuentes. `?lang=es` lo devuelve en español; si el proveedor de IA no responde, contesta 429/503 controlado |
 | `/v1/report/client/:clientId/instrument/:instrumentId` | Posiciones en un instrumento, su peso en la cartera y reparto por cuenta bancaria |
 | `/v1/report/client/:clientId/issuer/:issuerId` | Posiciones de un emisor, su peso en la cartera y reparto por instrumento |
 
@@ -362,7 +363,10 @@ Reglas:
 - **Acceso:** `ownedClientMiddleware` carga el cliente y verifica que un
   `advisor` solo acceda a sus propios clientes; si el cliente es de otro
   advisor se responde **404** (no 403), para no revelar su existencia. Un
-  `admin` puede consultar cualquier cliente.
+  `admin` puede consultar cualquier cliente. El mismo criterio aplica al CRUD
+  de clientes, managers (`ownedManagerMiddleware`) y posiciones
+  (`ownedPositionMiddleware`: una posición es de quien sea dueño de su
+  cliente), y los listados de cada uno solo muestran lo propio.
 - **Vigencia:** salvo el histórico, los reportes usan solo el último reporte
   de cada tenencia (mismo instrumento en la misma cuenta bancaria), siempre
   que su `dateOfReport` sea de los últimos 30 días. El histórico toma el
