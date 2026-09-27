@@ -1,11 +1,15 @@
 import {
   createPositionsService,
   deletePositionService,
-  getPositionByIdService,
   getPositionsService,
   updatePositionService,
 } from '../services/position.services.js';
-import { canAccessClient, getClientsByIdsService } from '../services/client.services.js';
+import {
+  canAccessClient,
+  getClientByIdService,
+  getClientsByIdsService,
+  getClientsService,
+} from '../services/client.services.js';
 import { resolveInstrumentsByIsinService } from '../services/instruments.services.js';
 
 const POSITION_MESSAGES = {
@@ -20,8 +24,15 @@ const POSITION_MESSAGES = {
   deleted: 'Position has been removed successfully.',
 };
 
+// Advisors only list the positions of their own clients; admins list every position
 export const getPositions = async (req, res) => {
-  const positions = await getPositionsService();
+  const { id, role } = req.decoded;
+  let filter = {};
+  if (role === 'advisor') {
+    const clients = await getClientsService({ advisorId: id });
+    filter = { clientId: { $in: clients.map((client) => client._id) } };
+  }
+  const positions = await getPositionsService(filter);
   if (positions.length === 0) return res.status(404).json({ message: POSITION_MESSAGES.empty });
   res.status(200).json(positions);
 };
@@ -109,25 +120,41 @@ export const createPositions = async (req, res) => {
   });
 };
 
+// req.position (and its req.client) is loaded and access-checked by ownedPositionMiddleware
 export const getPositionById = async (req, res) => {
-  const { id } = req.params;
-  const position = await getPositionByIdService(id);
-  if (!position || position.isDeleted) {
-    return res.status(404).json({ message: POSITION_MESSAGES.notFound });
+  res.status(200).json(req.position);
+};
+
+// A position can only move to an active bank account of a client the requester can reach.
+// Changing just the client keeps the stored account, which then has to belong to the new client
+const findMoveErrors = async ({ clientId, bankAccountId }, { position, client }, user) => {
+  const targetClient = clientId ? await getClientByIdService(clientId) : client;
+  if (!targetClient || !canAccessClient(targetClient, user)) {
+    return [{ field: 'clientId', message: POSITION_MESSAGES.clientNotFound }];
   }
-  res.status(200).json(position);
+  const bankAccount = targetClient.bankAccounts.id(bankAccountId ?? position.bankAccountId);
+  if (!bankAccount || bankAccount.isDeleted) {
+    return [{ field: 'bankAccountId', message: POSITION_MESSAGES.bankAccountNotFound }];
+  }
+  return [];
 };
 
 export const updatePosition = async (req, res) => {
-  const { id } = req.params;
-  const position = await updatePositionService(id, req.validatedBody);
+  const { clientId, bankAccountId } = req.validatedBody;
+  if (clientId || bankAccountId) {
+    const errors = await findMoveErrors({ clientId, bankAccountId }, req, req.decoded);
+    if (errors.length > 0) {
+      return res.status(404).json({ message: POSITION_MESSAGES.invalidReferences, details: errors });
+    }
+  }
+
+  const position = await updatePositionService(req.position.id, req.validatedBody);
   if (!position) return res.status(404).json({ message: POSITION_MESSAGES.notFound });
   res.status(200).json({ position, message: POSITION_MESSAGES.updated });
 };
 
 export const deletePosition = async (req, res) => {
-  const { id } = req.params;
-  const position = await deletePositionService(id);
+  const position = await deletePositionService(req.position.id);
   if (!position) return res.status(404).json({ message: POSITION_MESSAGES.notFound });
   return res.status(200).json({ message: POSITION_MESSAGES.deleted });
 };

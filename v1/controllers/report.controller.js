@@ -6,6 +6,7 @@ import {
   ClientHistoricReport,
   ClientInstrumentReport,
   ClientIssuerReport,
+  ClientNewsReport,
 } from '../services/report.services.js';
 
 const REPORT_MESSAGES = {
@@ -51,5 +52,12 @@ export const clientCompositionReport = async (req, res) => {
 export const clientHistoricReport = async (req, res) => {
   const { id, role } = req.decoded;
   const report = await ClientHistoricReport(req.client, { id, role });
+  res.status(200).json(report);
+};
+
+export const clientNewsReport = async (req, res) => {
+  const { id, role } = req.decoded;
+  const { lang } = req.validatedQuery;
+  const report = await ClientNewsReport(req.client, { id, role }, lang);
   res.status(200).json(report);
 };

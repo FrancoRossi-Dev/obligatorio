@@ -15,9 +15,9 @@ const bankSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    // Cloudinary URL, set only through POST /v1/bank/:id/uploadImage
     logoURL: {
       type: String,
-      required: true,
     },
     isDeleted: {
       type: Boolean,

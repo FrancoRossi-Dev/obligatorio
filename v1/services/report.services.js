@@ -1,5 +1,7 @@
 import Position from '../models/position.model.js';
+import { analyzePortfolioNewsService } from './groq.services.js';
 import { daysAgo, monthOf, toIsoDate } from '../utils/date.js';
+import { ERRORS, httpError } from '../utils/http-error.js';
 import { round, toPercentage } from '../utils/math.js';
 import {
   buildAllocation,
@@ -19,7 +21,11 @@ const REPORT_TYPES = {
   clientIssuer: 'client-issuer',
   clientComposition: 'client-composition',
   clientHistoric: 'client-historic',
+  clientNews: 'client-news',
 };
+
+// The news report only analyzes the client's largest positions, to keep the AI request small
+const NEWS_TOP_POSITIONS = 3;
 
 // @TODO definir
 // Every amount is treated as USD for now
@@ -128,7 +134,28 @@ export const ClientHistoricReport = async (client, user) => {
   });
 };
 
-// ia assestment
+// news: AI analysis of recent news on the client's largest positions
+export const ClientNewsReport = async (client, user, language) => {
+  const rows = await findLatestPositionRows(client);
+  if (rows.length === 0) throw httpError(ERRORS.noRecentPositions);
+
+  const totals = buildTotals(rows);
+  // Cash can rank among the top positions and the model will then search news for it, which
+  // spends a search on nothing useful. Filtering out type 'cash' here would avoid it; left as is
+  // for now so the percentages match the composition report.
+  const topPositions = buildAllocation(rows, totals.marketValue, byInstrument).slice(
+    0,
+    NEWS_TOP_POSITIONS,
+  );
+  const news = await analyzePortfolioNewsService(topPositions, language);
+
+  return createReport(user, REPORT_TYPES.clientNews, {
+    client: toClientSummary(client),
+    reportWindow: getReportWindow(),
+    portfolio: { totalMarketValue: totals.marketValue, topPositions },
+    ...news,
+  });
+};
 
 // for advisor
 // top clients in portfolio volume and markey value
@@ -166,7 +193,7 @@ const findLatestPositions = async (client, filters, keyOf) => {
   return [...latest.values()];
 };
 
-export const findLatestPositionRows = async (client) =>
+const findLatestPositionRows = async (client) =>
   toPositionRows(
     client,
     await findLatestPositions(

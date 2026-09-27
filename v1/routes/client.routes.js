@@ -2,10 +2,9 @@ import express from 'express';
 import { validateBodyMiddleware } from '../middlewares/validatedBody.middleware.js';
 import { validateParamsMiddleware } from '../middlewares/validatedParams.middleware.js';
 import { ownedClientMiddleware } from '../middlewares/ownedClient.middleware.js';
-import {
-  assignClientAdvisorMiddleware,
-  lockClientAdvisorMiddleware,
-} from '../middlewares/clientAdvisor.middleware.js';
+import { uploadImageMiddleware } from '../middlewares/multer.middleware.js';
+import { assignAdvisorMiddleware, lockAdvisorMiddleware } from '../middlewares/advisor.middleware.js';
+import { clientManagerMiddleware } from '../middlewares/clientManager.middleware.js';
 import {
   createClientPlanLimitMiddleware,
   updateClientPlanLimitMiddleware,
@@ -16,6 +15,7 @@ import {
   getClientById,
   updateClient,
   deleteClient,
+  uploadClientLogo,
 } from '../controllers/client.controller.js';
 import {
   clientParamsSchema,
@@ -32,8 +32,9 @@ router
   .post(
     '/',
     validateBodyMiddleware(createClientSchema),
-    assignClientAdvisorMiddleware,
+    assignAdvisorMiddleware,
     createClientPlanLimitMiddleware,
+    clientManagerMiddleware,
     createClient,
   );
 
@@ -43,10 +44,14 @@ router
     '/:clientId',
     ownedClient,
     validateBodyMiddleware(updateClientSchema),
-    lockClientAdvisorMiddleware,
+    lockAdvisorMiddleware,
     updateClientPlanLimitMiddleware,
+    clientManagerMiddleware,
     updateClient,
   )
   .delete('/:clientId', ownedClient, deleteClient);
+
+// multipart/form-data with the logo in the "image" field; ownership is checked before the file is read
+router.post('/:clientId/uploadImage', ownedClient, uploadImageMiddleware, uploadClientLogo);
 
 export default router;

@@ -12,7 +12,8 @@ export const createInstrumentSchema = Joi.object({
     "any.required": "Instrument type is required.",
     }),
     issuerId: Joi.string().when("type", {
-    is: Joi.valid("stock", "bond"),
+    // required(): without it the condition also matches when type is not sent (e.g. on updates)
+    is: Joi.valid("stock", "bond").required(),
     then: Joi.string().required().messages({
         "string.empty": "Issuer ID is required for stock and bond instruments.",
         "any.required": "Issuer ID is required for stock and bond instruments.",
@@ -48,7 +49,8 @@ export const updateInstrumentSchema = Joi.object({
     "any.only": "Instrument type must be one of 'stock', 'bond', 'fund', or 'cash'.",
     }),
     issuerId: Joi.string().when("type", {
-    is: Joi.valid("stock", "bond"),
+    // required(): without it the condition also matches when type is not sent (e.g. on updates)
+    is: Joi.valid("stock", "bond").required(),
     then: Joi.string().required().messages({
         "string.empty": "Issuer ID is required for stock and bond instruments.",
         "any.required": "Issuer ID is required for stock and bond instruments.",

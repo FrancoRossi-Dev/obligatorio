@@ -1,0 +1,148 @@
+TODO - OBLIGATORIO 1 (BACKEND)
+
+Entrega: 1/10/2026 hasta las 21:00 en gestion.ort.edu.uy
+Defensa: del 05/10 al 08/10, online
+Relevado contra la letra (2026_08_DFS_Obligatorio_1.pdf) sobre main en el commit ba6494d.
+Orden sugerido: de arriba hacia abajo. Postman va al final porque depende de todo lo
+anterior, pero hay que reservarle al menos un dia.
+
+
+0. ERRORES DE LINT (RAPIDO)
+
+[ ] v1/utils/http-error.js: borrar routeNotFound y clientNotFound duplicados (quedaron del merge).
+[x] v1/services/groq.services.js: el id descartado que daba error de lint (resuelto al mover el
+    analisis de IA a /v1/report/client/:clientId/news).
+[ ] v1/middlewares/error.middleware.js linea 3: renombrar next a _next. Express necesita los
+    4 parametros para reconocerlo como manejador de errores, asi que no hay que sacarlo.
+[ ] npm run lint sin errores.
+
+
+1. STATUS CODES Y MANEJO DE ERRORES
+
+[ ] errorMiddleware: traducir errores de Mongoose/Mongo en lugar de devolver 500:
+    - CastError (id mal formado): 400.
+    - Codigo 11000 (clave duplicada): 409. Aplica a nombre de banco, legalName de issuer,
+      email de manager e ISIN.
+    - ValidationError de Mongoose: 400.
+[ ] Validar :id con validateParamsMiddleware en bank, instrument, issuer, manager y position
+    (como ya hacen client y report).
+[ ] Listados vacios: devolver 200 con lista vacia (o pagina vacia) en vez de 404 en todos los GET /.
+[ ] Unificar controllers: usar throw httpError(...) en lugar de res.status(404).json(...) sueltos,
+    para que todas las respuestas de error tengan el mismo formato { message, details }.
+
+
+2. ROLES Y CONTROL DE ACCESO (OWASP API1 / API5)
+
+[x] Bank: POST, PATCH y DELETE solo admin (authorizeMiddleware('admin')); GET para cualquier
+    usuario autenticado.
+[x] Issuer: mismo criterio que Bank.
+[ ] Instrument: decidir si el alta manual es de admin o de cualquiera (el import por ISIN lo crea
+    solo) y aplicar el middleware.
+[x] Manager: el advisor solo ve, edita y borra sus propios managers; el advisorId sale del token
+    (igual que en client).
+[x] Position:
+    [x] GET / filtra por los clientes del advisor.
+    [x] GET, PATCH y DELETE /:id verifican que la posicion sea de un cliente propio (404 si no).
+    [x] updatePositionSchema: no permitir cambiar clientId ni bankAccountId, o validar que el
+        destino sea propio.
+[x] Client POST y PATCH: managerId tiene que ser un manager activo del mismo advisor (422).
+[ ] createClient: validar que cada bankId exista; si no, 422.
+[ ] Manager POST por admin: validar que el advisorId exista (hoy se crea igual).
+
+
+3. CATEGORIAS: RESTRICCION DE BORRADO
+
+[ ] deleteBankService: si hay cuentas activas con ese banco (Client.bankAccounts.bankId), 409.
+[ ] deleteIssuerService: pasar a borrado logico (agregar isDeleted al modelo) y rechazar con 409
+    si tiene instrumentos asociados.
+[ ] Agregar los mensajes a ERRORS (bankInUse, issuerInUse).
+
+
+4. PAGINACION Y FILTROS
+
+[ ] Helper comun: ?page= y ?limit= validados con Joi (400 si son invalidos). La respuesta
+    devuelve { data, total, page, limit, pages }.
+[ ] Aplicarlo en client, position e instrument (y en manager, bank e issuer si da el tiempo).
+[ ] Filtros minimos:
+    [ ] Client: texto libre por nombre (commercialName o legalName) y managerId.
+    [ ] Position: clientId, instrumentId, currency y rango de dateOfReport.
+    [ ] Instrument: type, name e isin.
+    [ ] Bank: country y region.
+
+
+5. SUBIDA DE IMAGENES
+
+[x] multer: limite de tamano (limits.fileSize) y fileFilter que acepte solo imagenes; 400 si
+    no cumple.
+[x] Mensajes en ingles y errores via httpError (sacar el try/catch que devuelve 500).
+[x] Error de Cloudinary: 503 controlado.
+[x] La respuesta devolvia folder undefined (cuentas en modo dynamic folders usan asset_folder).
+[x] Asociar la imagen a un documento: POST /v1/bank/:id/uploadImage (admin) y
+    POST /v1/client/:clientId/uploadImage (dueño). Se elimino /v1/uploads.
+[ ] Opcional: al reemplazar un logo, borrar la imagen anterior de Cloudinary (guardar public_id).
+
+
+6. SEGURIDAD EXTRA (SE VALORA)
+
+[ ] express-rate-limit en /v1/auth/login y /v1/auth/register.
+[ ] helmet.
+[ ] Limite de tamano del body: express.json({ limit: '100kb' }).
+[ ] requestLogger: evaluar reducir lo que se loguea en produccion (hoy loguea los headers completos).
+
+
+7. DEPLOY EN VERCEL
+
+[ ] connectDB: sacar el process.exit(1) y cachear la conexion (en serverless se reutilizan
+    las instancias).
+[ ] Entry point: confirmar que Vercel use app.js (export default) o agregar vercel.json.
+[ ] MongoDB Atlas: habilitar acceso desde cualquier IP (0.0.0.0/0).
+[ ] Variables de entorno en Vercel: MONGODB_URI, JWT_SECRET, JWT_EXPIRES_IN, SALT_ROUNDS,
+    MONGO_DUPLICATE_KEY, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET,
+    GROQ_API_KEY y OPEN_FIGI_API_KEY.
+[ ] Correr los seeds contra la base de produccion (seed-admins.js y seed-data.js).
+[ ] Probar cada recurso contra la URL publicada.
+
+
+8. COLECCION DE POSTMAN
+
+[ ] Una sola coleccion, con una carpeta por recurso: Auth, User/Plan, Bank, Issuer, Instrument,
+    Manager, Client, Position, Report, Bank logo e IA.
+[ ] Variable de coleccion prod_base_url apuntando a la URL de Vercel y usada por defecto
+    (reemplaza a host_url).
+[ ] Variables encadenadas: token, admin_token, bankId, issuerId, instrumentId, managerId,
+    clientId, bankAccountId y positionId.
+[ ] Tests en cada request: status code esperado, forma del body y datos devueltos.
+[ ] Un request por cada status code implementado (400, 401, 403, 404, 409, 422, y 429/503
+    donde aplique).
+[ ] Flujos que pide la letra:
+    [ ] Registro invalido, despues registro OK (guarda las credenciales), despues registro
+        duplicado con 409.
+    [ ] 4 altas en plan base, la 5ta rechazada con 403, cambio de plan, y la 5ta OK.
+    [ ] Borrar un banco con cuentas: 409.
+[ ] Nombres unicos por corrida ({{$timestamp}}) para que la coleccion se pueda correr varias veces.
+[ ] Correr la coleccion completa con el Runner contra produccion sin fallos.
+[ ] Exportar a JSON (v2.1).
+
+
+9. LIMPIEZA Y DOCUMENTACION
+
+[ ] Borrar v1/services/example.dragones.services.js.
+[x] Borrar obtenerConsultaGroqService (sin uso) en groq.services.js.
+[ ] Revisar user.controller.js: usa try/catch con next, pero Express 5 ya propaga los errores
+    async, asi que se puede simplificar.
+[ ] README: actualizar el estado del proyecto (IA, planes y deploy terminados), agregar la URL
+    publicada y quitar RevokedToken del diagrama.
+[ ] endpoints.md: alinear con las rutas reales (/v1/bank, /v1/client, /v1/user/me/plan,
+    /v1/report/client/:clientId/news).
+[ ] Citar el uso de IA generativa en el desarrollo (lo exige la letra).
+
+
+10. ENTREGA
+
+[ ] Zip o rar de 40 MB como maximo, SIN node_modules.
+[ ] Carpeta con el codigo fuente.
+[ ] Archivo con la URL de la API publicada.
+[ ] JSON exportado de Postman.
+[ ] Documentos de texto en PDF, dentro del zip.
+[ ] Subir a Gestion antes de las 21:00 del 1/10 y verificar que llegue el mail de confirmacion.
+[ ] Preparar la defensa: los dos integrantes tienen que poder explicar todo el codigo.

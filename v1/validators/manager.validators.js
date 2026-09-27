@@ -1,5 +1,14 @@
 import Joi from 'joi';
 
+// Lowercased so ids compare equal to the ones Mongoose returns
+export const managerParamsSchema = Joi.object({
+  managerId: Joi.string().hex().length(24).lowercase().required().messages({
+    'string.hex': 'Manager id is not valid.',
+    'string.length': 'Manager id is not valid.',
+    'any.required': 'Manager id is required.',
+  }),
+});
+
 export const createManagerSchema = Joi.object({
   fullName: Joi.string().trim().max(100).required().messages({
     'string.base': 'Full name must be text.',
@@ -16,9 +25,11 @@ export const createManagerSchema = Joi.object({
     'any.required': 'Email is required.',
   }),
 
-  advisorId: Joi.string().required().messages({
-    'string.empty': 'Advisor is required.',
-    'any.required': 'Advisor is required.',
+  // Taken from the token for advisors; only an admin sends it (see advisor.middleware.js)
+  advisorId: Joi.string().hex().length(24).messages({
+    'string.empty': 'Advisor cannot be empty.',
+    'string.hex': 'Advisor id is not valid.',
+    'string.length': 'Advisor id is not valid.',
   }),
 });
 

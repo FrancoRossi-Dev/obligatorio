@@ -1,4 +1,5 @@
 import express from 'express';
+import { authorizeMiddleware } from '../middlewares/authorize.middleware.js';
 import { validateBodyMiddleware } from '../middlewares/validatedBody.middleware.js';
 import {
   createIssuer,
@@ -11,11 +12,14 @@ import { createIssuerSchema, updateIssuerSchema } from '../validators/issuer.val
 
 const router = express.Router({ mergeParams: true });
 
-router.get('/', getIssuers).post('/', validateBodyMiddleware(createIssuerSchema), createIssuer);
+// The catalog is shared by every advisor: anyone can read it, only an admin can change it
+const adminOnly = authorizeMiddleware('admin');
+
+router.get('/', getIssuers).post('/', adminOnly, validateBodyMiddleware(createIssuerSchema), createIssuer);
 
 router
   .get('/:id', getIssuerById)
-  .patch('/:id', validateBodyMiddleware(updateIssuerSchema), updateIssuer)
-  .delete('/:id', deleteIssuer);
+  .patch('/:id', adminOnly, validateBodyMiddleware(updateIssuerSchema), updateIssuer)
+  .delete('/:id', adminOnly, deleteIssuer);
 
 export default router;

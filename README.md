@@ -49,7 +49,7 @@ y el modelo de datos actual (con diagramas) en [Modelo de dominio](#modelo-de-do
 | Reportes por cliente (`/v1/report/client/:clientId/...`) | 🟨 (completo, composición, histórico, por instrumento y por emisor; todos los montos se tratan como USD hasta integrar FX — ver [Reportes](#reportes)) |
 | Control de acceso a clientes propios (`ownedClientMiddleware`) | ✅ (aplicado en reportes) |
 | ABM de Cuentas bancarias como colección propia (`BankAccount`, límite por plan) | ⬜ (hoy son subdocumentos de `Client`, sin límite de plan aplicado) |
-| Subida de imágenes a Cloudinary (`/v1/uploads`) | ✅ (endpoint genérico; todavía no se asocia a `Bank.logoURL` automáticamente) |
+| Subida de imágenes a Cloudinary | ✅ (logo del banco en `/v1/bank/:id/uploadImage`, logo del cliente en `/v1/client/:clientId/uploadImage`) |
 | Scripts de seed (admins y datos de demo) | ✅ (ver [Scripts](#scripts)) |
 | Integración API de FX (terceros) | ⬜ |
 | Endpoint de IA generativa (análisis de cartera consolidada) | ⬜ |
@@ -156,7 +156,7 @@ Definidas en `.env` (no se versiona).
 │   ├── v1.routes.js       # Router raíz de /v1; monta los routers de cada recurso
 │   ├── config/            # Conexión a MongoDB y cliente de Cloudinary
 │   ├── models/            # Esquemas Mongoose (User/Admin/Advisor, Manager, Client, Bank, Instrument, Issuer, Position, RevokedToken)
-│   ├── routes/            # Un router por recurso (auth, bank, client, instrument, issuer, manager, position, report, uploads)
+│   ├── routes/            # Un router por recurso (auth, bank, client, instrument, issuer, manager, position, report, user)
 │   ├── controllers/       # Manejo de request/response por endpoint
 │   ├── services/          # Lógica de negocio y acceso a datos (Mongoose)
 │   ├── validators/        # Esquemas Joi de validación de entrada (body y params)
@@ -201,10 +201,10 @@ equivalencia:
 | Usuario común | `User` con discriminador `role: "advisor"` (`Advisor`) | la letra dice `user`, el código usa `advisor` |
 | Administrador | `User` con discriminador `role: "admin"` (`Admin`) | catálogo de bancos/emisores |
 | Empresa / cliente del asesor | `Client` | sin login propio; `advisorId` la vincula a su `Advisor` |
-| Ejecutivo de cuenta | `Manager` | empleado del `Advisor` (sin login propio); cada `Client` tiene un `managerId`, un `Manager` puede atender varios clientes |
-| Banco (categoría) | `Bank` | catálogo, alta reservada a `admin` |
+| Ejecutivo de cuenta | `Manager` | empleado del `Advisor` (sin login propio); cada `Client` tiene un `managerId`, un `Manager` puede atender varios clientes. El `managerId` de un cliente tiene que ser del mismo advisor (422 si no) |
+| Banco (categoría) | `Bank` | catálogo: lo lee cualquier usuario, solo `admin` lo crea, modifica o borra (403 para `advisor`) |
 | Cuenta bancaria | `Client.bankAccounts[]` (subdocumento embebido) | no es colección propia — ver limitación abajo |
-| Emisor de un instrumento | `Issuer` | acción/corporación o gobierno; distinto de `Client` |
+| Emisor de un instrumento | `Issuer` | acción/corporación o gobierno; distinto de `Client`. Mismo criterio que `Bank`: escritura solo `admin` |
 | Instrumento financiero | `Instrument` | tipo único con discriminación por `type` (`stock`\|`bond`\|`fund`\|`cash`) |
 | Posición | `Position` | tenencia de un `Instrument` en una `bankAccount` de un `Client`, con cantidad y precios |
 | Plan `plus` | `Advisor.planTier: "premium"` | la letra dice `plus`, el modelo usa `premium` |
@@ -354,6 +354,7 @@ de un único cliente:
 | `/v1/report/client/:clientId` | Reporte completo: posiciones del mes, totales (costo, valor de mercado, resultado no realizado) y composición |
 | `/v1/report/client/:clientId/composition` | Totales y distribución de la cartera por tipo de instrumento, instrumento y emisor |
 | `/v1/report/client/:clientId/historic` | Totales por mes, variación del valor de mercado contra el mes anterior y distribución por tipo de instrumento |
+| `/v1/report/client/:clientId/news` | Análisis con IA generativa (Groq + búsqueda web) de las noticias recientes sobre las 3 mayores posiciones del cliente, con sus fuentes. `?lang=es` lo devuelve en español; si el proveedor de IA no responde, contesta 429/503 controlado |
 | `/v1/report/client/:clientId/instrument/:instrumentId` | Posiciones en un instrumento, su peso en la cartera y reparto por cuenta bancaria |
 | `/v1/report/client/:clientId/issuer/:issuerId` | Posiciones de un emisor, su peso en la cartera y reparto por instrumento |
 
@@ -362,7 +363,10 @@ Reglas:
 - **Acceso:** `ownedClientMiddleware` carga el cliente y verifica que un
   `advisor` solo acceda a sus propios clientes; si el cliente es de otro
   advisor se responde **404** (no 403), para no revelar su existencia. Un
-  `admin` puede consultar cualquier cliente.
+  `admin` puede consultar cualquier cliente. El mismo criterio aplica al CRUD
+  de clientes, managers (`ownedManagerMiddleware`) y posiciones
+  (`ownedPositionMiddleware`: una posición es de quien sea dueño de su
+  cliente), y los listados de cada uno solo muestran lo propio.
 - **Vigencia:** salvo el histórico, los reportes usan solo el último reporte
   de cada tenencia (mismo instrumento en la misma cuenta bancaria), siempre
   que su `dateOfReport` sea de los últimos 30 días. El histórico toma el
@@ -376,10 +380,31 @@ Reglas:
 
 ## Subida de imágenes
 
-`POST /v1/uploads` (requiere JWT) recibe un `multipart/form-data` con el archivo
-en el campo `imagen` y, opcionalmente, `folder` (por defecto `uploads`). El
-archivo se mantiene en memoria y se sube a Cloudinary; la respuesta devuelve
-`{ url, folder }`, pensada para guardarse luego en campos como `Bank.logoURL`.
+Las imágenes siempre se asocian a un documento: no hay un endpoint de subida
+genérico. Ambas rutas reciben un `multipart/form-data` con el archivo en el
+campo `image`; se mantiene en memoria, se sube a Cloudinary y la URL queda
+guardada en el documento. `logoURL` no se acepta en el body de alta ni de
+`PATCH` (400): solo se carga subiendo la imagen, así siempre apunta a una
+imagen propia.
+
+| Ruta | Quién | Carpeta | Guarda en |
+| --- | --- | --- | --- |
+| `POST /v1/bank/:id/uploadImage` | solo `admin` (403 para `advisor`) | `banks` | `Bank.logoURL` |
+| `POST /v1/client/:clientId/uploadImage` | dueño del cliente o `admin` (404 si es de otro advisor) | `clients` | `Client.clientDetails.logoURL` |
+
+Ambas responden **200** con el documento actualizado y un `message`. El
+documento se verifica antes de subir nada a Cloudinary.
+
+| Caso | Respuesta |
+| --- | --- |
+| Sin archivo, archivo en otro campo o más de uno | `400` (`details[].field = "image"`) |
+| Formato distinto de PNG, JPEG, WEBP o GIF (SVG excluido: puede traer scripts) | `400` |
+| Más de 2 MB | `400` |
+| Banco o cliente inexistente o borrado | `404` |
+| Cloudinary no responde | `503` |
+
+Capas: `uploadImageMiddleware` (multer, límites y filtro de tipo) →
+`uploadBankLogo` / `uploadClientLogo` → `uploadImageService` (Cloudinary).
 
 ---
 

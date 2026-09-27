@@ -1,17 +1,22 @@
 import Position from '../models/position.model.js';
+import { getPositionValue, round } from '../utils/math.js';
 
-export const getPositionsService = async () => {
-  const positions = await Position.find({ isDeleted: false });
+export const getPositionsService = async (filter = {}) => {
+  const positions = await Position.find({ ...filter, isDeleted: false });
   return positions;
 };
 
 export const getPositionByIdService = async (id) => {
-  const position = await Position.findById(id);
+  const position = await Position.findOne({ _id: id, isDeleted: false });
   return position;
 };
 
+// Bank imports report the market value; a manually entered position gets it from quantity and price
 export const createPositionService = async (positionData) => {
-  const position = new Position(positionData);
+  const position = new Position({
+    ...positionData,
+    marketValue: positionData.marketValue ?? round(getPositionValue(positionData)),
+  });
   await position.save();
   return position;
 };
