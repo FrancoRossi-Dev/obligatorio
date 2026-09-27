@@ -20,6 +20,10 @@ const clientDetailsSchema = new mongoose.Schema(
     country: {
       type: String,
     },
+    // Cloudinary URL, set only through POST /v1/client/:clientId/uploadImage
+    logoURL: {
+      type: String,
+    },
   },
   { _id: false },
 );

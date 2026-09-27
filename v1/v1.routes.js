@@ -9,7 +9,6 @@ import positionRoutes from './routes/position.routes.js';
 import reportRoutes from './routes/reports.routes.js';
 import userRoutes from './routes/user.routes.js';
 import { authenticateMiddleware } from './middlewares/authenticate.middleware.js';
-import uploadsRouter from './routes/uploads.routes.js';
 
 const router = express.Router({ mergeParams: true });
 
@@ -28,6 +27,5 @@ router.use('/manager', managerRoutes);
 router.use('/position', positionRoutes);
 router.use('/report', reportRoutes);
 router.use('/user', userRoutes);
-router.use('/uploads', uploadsRouter);
 
 export default router;

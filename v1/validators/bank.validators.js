@@ -1,5 +1,16 @@
 import Joi from 'joi';
 
+// Lowercased so ids compare equal to the ones Mongoose returns
+export const bankParamsSchema = Joi.object({
+  id: Joi.string().hex().length(24).lowercase().required().messages({
+    'string.hex': 'Bank id is not valid.',
+    'string.length': 'Bank id is not valid.',
+    'any.required': 'Bank id is required.',
+  }),
+});
+
+// The logo is not part of the body: it is uploaded through POST /v1/bank/:id/uploadImage
+
 export const createBankSchema = Joi.object({
   name: Joi.string().trim().max(100).required().messages({
     'string.base': 'Bank name must be text.', 
@@ -19,12 +30,6 @@ export const createBankSchema = Joi.object({
     'string.max': 'Region must be at most {#limit} characters long.',
     'any.required': 'Region is required.',
     }),
-    logoURL: Joi.string().uri({ scheme: ['http', 'https'] }).required().messages({
-    'string.base': 'Logo URL must be text.',
-    'string.empty': 'Logo URL is required.',
-    'string.uriCustomScheme': 'Logo URL must use http or https.',  
-    'any.required': 'Logo URL is required.',
-    }),
 })
 
 export const updateBankSchema = Joi.object({
@@ -43,11 +48,6 @@ export const updateBankSchema = Joi.object({
     'string.empty': 'Region cannot be empty.',
     'string.max': 'Region must be at most {#limit} characters long.',
     }),
-    logoURL: Joi.string().uri({ scheme: ['http', 'https'] }).messages({
-    'string.base': 'Logo URL must be text.',
-    'string.empty': 'Logo URL cannot be empty.',
-    'string.uriCustomScheme': 'Logo URL must use http or https.',
-  }),
 })
   .min(1)
   .messages({

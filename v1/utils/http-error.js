@@ -37,6 +37,10 @@ export const ERRORS = {
     status: 503,
     message: 'The instrument reference service is unavailable, please try again later.',
   },
+  imageStorageUnavailable: {
+    status: 503,
+    message: 'The image storage service is unavailable, please try again later.',
+  },
   aiAnalysisUnavailable: {
     status: 503,
     message: 'The AI analysis service is unavailable, please try again later.',

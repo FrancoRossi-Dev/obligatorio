@@ -135,6 +135,10 @@
       "value": ""
     },
     {
+      "key": "clientLogoUrl",
+      "value": ""
+    },
+    {
       "key": "positionId",
       "value": ""
     },
@@ -151,7 +155,7 @@
       "value": ""
     },
     {
-      "key": "uploadedLogoUrl",
+      "key": "bankLogoUrl",
       "value": ""
     }
   ],
@@ -1286,8 +1290,7 @@
                   "pm.test(\"Message is \\\"The submitted data is invalid.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The submitted data is invalid.\"));",
                   "pm.test(\"Reports a problem with \\\"name\\\"\", () => pm.expect(pm.response.json().details.map((d) => d.field)).to.include(\"name\"));",
                   "pm.test(\"Reports a problem with \\\"country\\\"\", () => pm.expect(pm.response.json().details.map((d) => d.field)).to.include(\"country\"));",
-                  "pm.test(\"Reports a problem with \\\"region\\\"\", () => pm.expect(pm.response.json().details.map((d) => d.field)).to.include(\"region\"));",
-                  "pm.test(\"Reports a problem with \\\"logoURL\\\"\", () => pm.expect(pm.response.json().details.map((d) => d.field)).to.include(\"logoURL\"));"
+                  "pm.test(\"Reports a problem with \\\"region\\\"\", () => pm.expect(pm.response.json().details.map((d) => d.field)).to.include(\"region\"));"
                 ]
               }
             }
@@ -1317,7 +1320,7 @@
           }
         },
         {
-          "name": "3.2 Create bank with a non-http logo URL -> 400",
+          "name": "3.2 Create bank with a logo URL -> 400 (the logo is only uploaded)",
           "event": [
             {
               "listen": "test",
@@ -1351,7 +1354,7 @@
             "url": "{{prod_base_url}}/v1/bank",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Bad Logo Bank {{run_id}}\",\n  \"country\": \"Uruguay\",\n  \"region\": \"LATAM\",\n  \"logoURL\": \"ftp://example.com/logo.png\"\n}",
+              "raw": "{\n  \"name\": \"Logo Bank {{run_id}}\",\n  \"country\": \"Uruguay\",\n  \"region\": \"LATAM\",\n  \"logoURL\": \"https://example.com/logo.png\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1395,7 +1398,7 @@
             "url": "{{prod_base_url}}/v1/bank",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Extra Bank {{run_id}}\",\n  \"country\": \"Uruguay\",\n  \"region\": \"LATAM\",\n  \"logoURL\": \"https://example.com/logo.png\",\n  \"isDeleted\": true\n}",
+              "raw": "{\n  \"name\": \"Extra Bank {{run_id}}\",\n  \"country\": \"Uruguay\",\n  \"region\": \"LATAM\",\n  \"isDeleted\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1438,7 +1441,7 @@
             "url": "{{prod_base_url}}/v1/bank",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Banco Test {{run_id}}\",\n  \"country\": \"Uruguay\",\n  \"region\": \"LATAM\",\n  \"logoURL\": \"https://picsum.photos/seed/abakus/200\"\n}",
+              "raw": "{\n  \"name\": \"Banco Test {{run_id}}\",\n  \"country\": \"Uruguay\",\n  \"region\": \"LATAM\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1478,7 +1481,7 @@
             "url": "{{prod_base_url}}/v1/bank",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Banco Borrable {{run_id}}\",\n  \"country\": \"Argentina\",\n  \"region\": \"LATAM\",\n  \"logoURL\": \"https://picsum.photos/seed/abakus2/200\"\n}",
+              "raw": "{\n  \"name\": \"Banco Borrable {{run_id}}\",\n  \"country\": \"Argentina\",\n  \"region\": \"LATAM\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1532,7 +1535,7 @@
                   "  const bank = pm.response.json();",
                   "  pm.expect(bank._id).to.eql(pm.collectionVariables.get('bankId'));",
                   "  pm.expect(bank.name).to.eql('Banco Test ' + pm.collectionVariables.get('run_id'));",
-                  "  pm.expect(bank).to.include.keys('name', 'region', 'country', 'logoURL');",
+                  "  pm.expect(bank).to.include.keys('name', 'region', 'country');",
                   "});"
                 ]
               }
@@ -1852,7 +1855,7 @@
             "url": "{{prod_base_url}}/v1/bank",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Advisor Bank {{run_id}}\",\n  \"country\": \"Uruguay\",\n  \"region\": \"LATAM\",\n  \"logoURL\": \"https://example.com/logo.png\"\n}",
+              "raw": "{\n  \"name\": \"Advisor Bank {{run_id}}\",\n  \"country\": \"Uruguay\",\n  \"region\": \"LATAM\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -4923,6 +4926,234 @@
             ],
             "url": "{{prod_base_url}}/v1/client/{{clientBId}}"
           }
+        },
+        {
+          "name": "7.26 Upload client logo -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"Message is \\\"Client logo has been updated successfully.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"Client logo has been updated successfully.\"));",
+                  "pm.test(\"Stores the Cloudinary URL in the client details\", () => {",
+                  "  const { clientDetails } = pm.response.json().client;",
+                  "  pm.expect(clientDetails.logoURL).to.match(/^https:\\/\\/res\\.cloudinary\\.com\\/.+\\/clients\\//);",
+                  "  pm.expect(clientDetails.commercialName).to.include('Renamed');",
+                  "  pm.collectionVariables.set('clientLogoUrl', clientDetails.logoURL);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{clientId}}/uploadImage",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "fixtures/abakus-logo.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "7.27 Get client shows its logo -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"logoURL is the uploaded one\", () => {",
+                  "  pm.expect(pm.response.json().clientDetails.logoURL).to.eql(pm.collectionVariables.get('clientLogoUrl'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{clientId}}"
+          }
+        },
+        {
+          "name": "7.28 Upload another advisor's client logo -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The requested client does not exist.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The requested client does not exist.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_b_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{clientId}}/uploadImage",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "fixtures/abakus-logo.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "7.29 Upload client logo without a file -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The submitted data is invalid.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The submitted data is invalid.\"));",
+                  "pm.test(\"Reports a problem with \\\"image\\\"\", () => pm.expect(pm.response.json().details.map((d) => d.field)).to.include(\"image\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{clientId}}/uploadImage",
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            }
+          }
+        },
+        {
+          "name": "7.30 Upload a client logo that is not an image -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The submitted data is invalid.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The submitted data is invalid.\"));",
+                  "pm.test(\"Reports a problem with \\\"image\\\"\", () => pm.expect(pm.response.json().details.map((d) => d.field)).to.include(\"image\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{clientId}}/uploadImage",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "fixtures/not-an-image.txt"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "7.31 Set the logo URL through PATCH -> 400 (only by upload)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The submitted data is invalid.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The submitted data is invalid.\"));",
+                  "pm.test(\"Reports a problem with \\\"clientDetails.logoURL\\\"\", () => pm.expect(pm.response.json().details.map((d) => d.field)).to.include(\"clientDetails.logoURL\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{clientId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientDetails\": {\n    \"logoURL\": \"https://example.com/logo.png\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         }
       ]
     },
@@ -7251,11 +7482,11 @@
       ]
     },
     {
-      "name": "11. Uploads",
-      "description": "Image upload to Cloudinary (multipart/form-data, field \"imagen\"). The 200 request needs fixtures/abakus-logo.png: run from documentation/postman or pick the file again in Postman.",
+      "name": "11. Bank logo",
+      "description": "Bank logos are uploaded to Cloudinary by an admin (multipart/form-data, file in \"image\"). The requests with a file need the fixtures folder: run from documentation/postman or pick the files again in Postman.",
       "item": [
         {
-          "name": "11.1 Upload without a file -> 400",
+          "name": "11.1 Upload bank logo without a file -> 400",
           "event": [
             {
               "listen": "test",
@@ -7263,8 +7494,15 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 400', () => pm.response.to.have.status(400));",
-                  "pm.test(\"Explains that no file was sent\", () => {",
-                  "  pm.expect(pm.response.json()).to.have.property('error');",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The submitted data is invalid.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The submitted data is invalid.\"));",
+                  "pm.test(\"Reports a problem with \\\"image\\\"\", () => pm.expect(pm.response.json().details.map((d) => d.field)).to.include(\"image\"));",
+                  "pm.test(\"Explains the image is required\", () => {",
+                  "  pm.expect(pm.response.json().details[0].message).to.eql('An image file is required.');",
                   "});"
                 ]
               }
@@ -7278,21 +7516,15 @@
                 "value": "Bearer {{admin_token}}"
               }
             ],
-            "url": "{{prod_base_url}}/v1/uploads",
+            "url": "{{prod_base_url}}/v1/bank/{{bankId}}/uploadImage",
             "body": {
               "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "folder",
-                  "value": "banks",
-                  "type": "text"
-                }
-              ]
+              "formdata": []
             }
           }
         },
         {
-          "name": "11.2 Upload an image -> 200",
+          "name": "11.2 Upload bank logo -> 200",
           "event": [
             {
               "listen": "test",
@@ -7300,13 +7532,12 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"Returns the Cloudinary URL inside the requested folder\", () => {",
-                  "  const { url } = pm.response.json();",
-                  "  pm.collectionVariables.set('uploadedLogoUrl', url);",
-                  "  pm.expect(url).to.match(/^https:\\/\\/res\\.cloudinary\\.com\\/.+\\/banks\\//);",
-                  "});",
-                  "pm.test(\"Returns the folder\", () => {",
-                  "  pm.expect(pm.response.json().folder).to.eql('banks');",
+                  "pm.test(\"Message is \\\"Bank logo has been updated successfully.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"Bank logo has been updated successfully.\"));",
+                  "pm.test(\"Stores the Cloudinary URL in the bank\", () => {",
+                  "  const { bank } = pm.response.json();",
+                  "  pm.expect(bank.logoURL).to.match(/^https:\\/\\/res\\.cloudinary\\.com\\/.+\\/banks\\//);",
+                  "  pm.expect(bank.region).to.eql('South America');",
+                  "  pm.collectionVariables.set('bankLogoUrl', bank.logoURL);",
                   "});"
                 ]
               }
@@ -7320,26 +7551,21 @@
                 "value": "Bearer {{admin_token}}"
               }
             ],
-            "url": "{{prod_base_url}}/v1/uploads",
+            "url": "{{prod_base_url}}/v1/bank/{{bankId}}/uploadImage",
             "body": {
               "mode": "formdata",
               "formdata": [
                 {
-                  "key": "imagen",
+                  "key": "image",
                   "type": "file",
                   "src": "fixtures/abakus-logo.png"
-                },
-                {
-                  "key": "folder",
-                  "value": "banks",
-                  "type": "text"
                 }
               ]
             }
           }
         },
         {
-          "name": "11.3 Use the uploaded image as a bank logo -> 200",
+          "name": "11.3 Get bank shows its logo -> 200",
           "event": [
             {
               "listen": "test",
@@ -7347,39 +7573,66 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"Bank logo now points to Cloudinary\", () => {",
-                  "  pm.expect(pm.response.json().bank.logoURL).to.eql(pm.collectionVariables.get('uploadedLogoUrl'));",
+                  "pm.test(\"logoURL is the uploaded one\", () => {",
+                  "  pm.expect(pm.response.json().logoURL).to.eql(pm.collectionVariables.get('bankLogoUrl'));",
                   "});"
                 ]
               }
             }
           ],
           "request": {
-            "method": "PATCH",
+            "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{admin_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
+                "value": "Bearer {{advisor_token}}"
               }
             ],
-            "url": "{{prod_base_url}}/v1/bank/{{bankId}}",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"logoURL\": \"{{uploadedLogoUrl}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
+            "url": "{{prod_base_url}}/v1/bank/{{bankId}}"
+          }
+        },
+        {
+          "name": "11.4 Upload bank logo as advisor -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"Your account role does not have access to this resource.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"Your account role does not have access to this resource.\"));"
+                ]
               }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank/{{bankId}}/uploadImage",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "fixtures/abakus-logo.png"
+                }
+              ]
             }
           }
         },
         {
-          "name": "11.4 Upload without token -> 401",
+          "name": "11.5 Upload bank logo without token -> 401",
           "event": [
             {
               "listen": "test",
@@ -7400,14 +7653,294 @@
           "request": {
             "method": "POST",
             "header": [],
+            "url": "{{prod_base_url}}/v1/bank/{{bankId}}/uploadImage",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "fixtures/abakus-logo.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11.6 Upload a bank logo that is not an image -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The submitted data is invalid.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The submitted data is invalid.\"));",
+                  "pm.test(\"Reports a problem with \\\"image\\\"\", () => pm.expect(pm.response.json().details.map((d) => d.field)).to.include(\"image\"));",
+                  "pm.test(\"Lists the accepted formats\", () => {",
+                  "  pm.expect(pm.response.json().details[0].message).to.eql('The image must be a PNG, JPEG, WEBP or GIF file.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank/{{bankId}}/uploadImage",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "fixtures/not-an-image.txt"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11.7 Upload the bank logo in another field -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The submitted data is invalid.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The submitted data is invalid.\"));",
+                  "pm.test(\"Reports a problem with \\\"image\\\"\", () => pm.expect(pm.response.json().details.map((d) => d.field)).to.include(\"image\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank/{{bankId}}/uploadImage",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "imagen",
+                  "type": "file",
+                  "src": "fixtures/abakus-logo.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11.8 Upload logo of a nonexistent bank -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test(\"Message is \\\"Bank not found.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"Bank not found.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank/000000000000000000000000/uploadImage",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "fixtures/abakus-logo.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11.9 Upload logo of a deleted bank -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test(\"Message is \\\"Bank not found.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"Bank not found.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank/{{bankToDeleteId}}/uploadImage",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "fixtures/abakus-logo.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11.10 Upload bank logo with an invalid bank id -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The submitted data is invalid.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The submitted data is invalid.\"));",
+                  "pm.test(\"Reports a problem with \\\"id\\\"\", () => pm.expect(pm.response.json().details.map((d) => d.field)).to.include(\"id\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank/not-an-id/uploadImage",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "fixtures/abakus-logo.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11.11 Set the bank logo through PATCH -> 400 (only by upload)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The submitted data is invalid.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The submitted data is invalid.\"));",
+                  "pm.test(\"Reports a problem with \\\"logoURL\\\"\", () => pm.expect(pm.response.json().details.map((d) => d.field)).to.include(\"logoURL\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank/{{bankId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"logoURL\": \"https://example.com/logo.png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "11.12 The old generic upload route is gone -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The requested endpoint does not exist.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The requested endpoint does not exist.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
             "url": "{{prod_base_url}}/v1/uploads",
             "body": {
               "mode": "formdata",
               "formdata": [
                 {
-                  "key": "folder",
-                  "value": "banks",
-                  "type": "text"
+                  "key": "image",
+                  "type": "file",
+                  "src": "fixtures/abakus-logo.png"
                 }
               ]
             }

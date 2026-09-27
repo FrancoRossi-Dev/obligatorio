@@ -1,0 +1,1 @@
+Plain text fixture: /v1/uploads must reject it because it is not an image.

@@ -49,7 +49,7 @@ y el modelo de datos actual (con diagramas) en [Modelo de dominio](#modelo-de-do
 | Reportes por cliente (`/v1/report/client/:clientId/...`) | 🟨 (completo, composición, histórico, por instrumento y por emisor; todos los montos se tratan como USD hasta integrar FX — ver [Reportes](#reportes)) |
 | Control de acceso a clientes propios (`ownedClientMiddleware`) | ✅ (aplicado en reportes) |
 | ABM de Cuentas bancarias como colección propia (`BankAccount`, límite por plan) | ⬜ (hoy son subdocumentos de `Client`, sin límite de plan aplicado) |
-| Subida de imágenes a Cloudinary (`/v1/uploads`) | ✅ (endpoint genérico; todavía no se asocia a `Bank.logoURL` automáticamente) |
+| Subida de imágenes a Cloudinary | ✅ (logo del banco en `/v1/bank/:id/uploadImage`, logo del cliente en `/v1/client/:clientId/uploadImage`) |
 | Scripts de seed (admins y datos de demo) | ✅ (ver [Scripts](#scripts)) |
 | Integración API de FX (terceros) | ⬜ |
 | Endpoint de IA generativa (análisis de cartera consolidada) | ⬜ |
@@ -156,7 +156,7 @@ Definidas en `.env` (no se versiona).
 │   ├── v1.routes.js       # Router raíz de /v1; monta los routers de cada recurso
 │   ├── config/            # Conexión a MongoDB y cliente de Cloudinary
 │   ├── models/            # Esquemas Mongoose (User/Admin/Advisor, Manager, Client, Bank, Instrument, Issuer, Position, RevokedToken)
-│   ├── routes/            # Un router por recurso (auth, bank, client, instrument, issuer, manager, position, report, uploads)
+│   ├── routes/            # Un router por recurso (auth, bank, client, instrument, issuer, manager, position, report, user)
 │   ├── controllers/       # Manejo de request/response por endpoint
 │   ├── services/          # Lógica de negocio y acceso a datos (Mongoose)
 │   ├── validators/        # Esquemas Joi de validación de entrada (body y params)
@@ -380,10 +380,31 @@ Reglas:
 
 ## Subida de imágenes
 
-`POST /v1/uploads` (requiere JWT) recibe un `multipart/form-data` con el archivo
-en el campo `imagen` y, opcionalmente, `folder` (por defecto `uploads`). El
-archivo se mantiene en memoria y se sube a Cloudinary; la respuesta devuelve
-`{ url, folder }`, pensada para guardarse luego en campos como `Bank.logoURL`.
+Las imágenes siempre se asocian a un documento: no hay un endpoint de subida
+genérico. Ambas rutas reciben un `multipart/form-data` con el archivo en el
+campo `image`; se mantiene en memoria, se sube a Cloudinary y la URL queda
+guardada en el documento. `logoURL` no se acepta en el body de alta ni de
+`PATCH` (400): solo se carga subiendo la imagen, así siempre apunta a una
+imagen propia.
+
+| Ruta | Quién | Carpeta | Guarda en |
+| --- | --- | --- | --- |
+| `POST /v1/bank/:id/uploadImage` | solo `admin` (403 para `advisor`) | `banks` | `Bank.logoURL` |
+| `POST /v1/client/:clientId/uploadImage` | dueño del cliente o `admin` (404 si es de otro advisor) | `clients` | `Client.clientDetails.logoURL` |
+
+Ambas responden **200** con el documento actualizado y un `message`. El
+documento se verifica antes de subir nada a Cloudinary.
+
+| Caso | Respuesta |
+| --- | --- |
+| Sin archivo, archivo en otro campo o más de uno | `400` (`details[].field = "image"`) |
+| Formato distinto de PNG, JPEG, WEBP o GIF (SVG excluido: puede traer scripts) | `400` |
+| Más de 2 MB | `400` |
+| Banco o cliente inexistente o borrado | `404` |
+| Cloudinary no responde | `503` |
+
+Capas: `uploadImageMiddleware` (multer, límites y filtro de tipo) →
+`uploadBankLogo` / `uploadClientLogo` → `uploadImageService` (Cloudinary).
 
 ---
 

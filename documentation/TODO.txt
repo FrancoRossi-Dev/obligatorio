@@ -72,12 +72,14 @@ anterior, pero hay que reservarle al menos un dia.
 
 5. SUBIDA DE IMAGENES
 
-[ ] multer: limite de tamano (limits.fileSize) y fileFilter que acepte solo imagenes; 400 si
+[x] multer: limite de tamano (limits.fileSize) y fileFilter que acepte solo imagenes; 400 si
     no cumple.
-[ ] Mensajes en ingles y errores via httpError (sacar el try/catch que devuelve 500).
-[ ] Error de Cloudinary: 503 controlado.
-[ ] Opcional: asociar la imagen a un documento, por ejemplo PATCH /v1/bank/:id/logo que guarda
-    logoURL.
+[x] Mensajes en ingles y errores via httpError (sacar el try/catch que devuelve 500).
+[x] Error de Cloudinary: 503 controlado.
+[x] La respuesta devolvia folder undefined (cuentas en modo dynamic folders usan asset_folder).
+[x] Asociar la imagen a un documento: POST /v1/bank/:id/uploadImage (admin) y
+    POST /v1/client/:clientId/uploadImage (dueño). Se elimino /v1/uploads.
+[ ] Opcional: al reemplazar un logo, borrar la imagen anterior de Cloudinary (guardar public_id).
 
 
 6. SEGURIDAD EXTRA (SE VALORA)
@@ -104,7 +106,7 @@ anterior, pero hay que reservarle al menos un dia.
 8. COLECCION DE POSTMAN
 
 [ ] Una sola coleccion, con una carpeta por recurso: Auth, User/Plan, Bank, Issuer, Instrument,
-    Manager, Client, Position, Report, Uploads e IA.
+    Manager, Client, Position, Report, Bank logo e IA.
 [ ] Variable de coleccion prod_base_url apuntando a la URL de Vercel y usada por defecto
     (reemplaza a host_url).
 [ ] Variables encadenadas: token, admin_token, bankId, issuerId, instrumentId, managerId,

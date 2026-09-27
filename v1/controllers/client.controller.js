@@ -4,12 +4,16 @@ import {
   getClientsService,
   updateClientService,
 } from '../services/client.services.js';
+import { uploadImageService } from '../services/upload.services.js';
+
+const CLIENT_LOGO_FOLDER = 'clients';
 
 const CLIENT_MESSAGES = {
   empty: 'No clients are registered yet.',
   notFound: 'Client not found.',
   created: 'Client has been registered successfully.',
   updated: 'Client has been updated successfully.',
+  logoUpdated: 'Client logo has been updated successfully.',
   deleted: 'Client has been removed successfully.',
 };
 
@@ -36,6 +40,15 @@ export const updateClient = async (req, res) => {
   const client = await updateClientService(req.client.id, req.validatedBody);
   if (!client) return res.status(404).json({ message: CLIENT_MESSAGES.notFound });
   res.status(200).json({ client, message: CLIENT_MESSAGES.updated });
+};
+
+// req.client is access-checked by ownedClientMiddleware and req.file parsed by uploadImageMiddleware;
+// the image is stored in Cloudinary and its URL replaces the client's logo
+export const uploadClientLogo = async (req, res) => {
+  const { url } = await uploadImageService(req.file.buffer, CLIENT_LOGO_FOLDER);
+  const client = await updateClientService(req.client.id, { clientDetails: { logoURL: url } });
+  if (!client) return res.status(404).json({ message: CLIENT_MESSAGES.notFound });
+  res.status(200).json({ client, message: CLIENT_MESSAGES.logoUpdated });
 };
 
 export const deleteClient = async (req, res) => {
