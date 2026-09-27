@@ -1,4 +1,4 @@
-import { getCostOnPurchase, getMarketValue, getUnrealized, round, toPercentage, toPercentages } from './math.js';
+import { getCostOnPurchase, getPositionValue, getUnrealized, round, toPercentage, toPercentages } from './math.js';
 
 export const createReport = (user, reportType, data) => {
   const report = {
@@ -26,7 +26,15 @@ export const buildPositionRow = (position, bankAccount) => {
   return {
     positionId: position.id,
     instrument:
-      instrument ? { id: instrument.id, name: instrument.name, type: instrument.type } : null,
+      instrument ?
+        {
+          id: instrument.id,
+          name: instrument.name,
+          type: instrument.type,
+          isin: instrument.isin ?? null,
+          ticker: instrument.ticker ?? null,
+        }
+      : null,
     issuer: issuer ? { id: issuer.id, name: issuer.commercialName } : null,
     bankAccount:
       bankAccount ?
@@ -37,7 +45,7 @@ export const buildPositionRow = (position, bankAccount) => {
     purchasePrice: position.purchasePrice,
     currentPrice: position.currentPrice ?? position.purchasePrice,
     costOnPurchase: round(costOnPurchase),
-    marketValue: round(getMarketValue(position)),
+    marketValue: round(getPositionValue(position)),
     unrealized: round(unrealized),
     unrealizedPercentage: toPercentage(unrealized, costOnPurchase),
     dateOfPurchase: position.dateOfPurchase,
@@ -71,6 +79,9 @@ export const byInstrument = (row) => ({
   key: row.instrument?.id ?? 'unknown',
   id: row.instrument?.id ?? null,
   name: row.instrument?.name ?? 'Unknown instrument',
+  type: row.instrument?.type ?? null,
+  isin: row.instrument?.isin ?? null,
+  ticker: row.instrument?.ticker ?? null,
 });
 
 export const byInstrumentType = (row) => ({

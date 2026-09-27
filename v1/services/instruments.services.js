@@ -29,9 +29,9 @@ export const updateInstrumentService = async (id, instrumentData) => {
 
 // OpenFIGI's name is the issuer's; a bond also needs its coupon and maturity to tell it apart
 const instrumentName = (listing, type) =>
-  type === 'bond' && listing.securityDescription
-    ? `${listing.name} ${listing.securityDescription}`
-    : listing.name;
+  type === 'bond' && listing.securityDescription ?
+    `${listing.name} ${listing.securityDescription}`
+  : listing.name;
 
 // Upsert keyed on the unique isin, so concurrent imports of the same ISIN can't collide
 const createInstrumentFromListing = async ({ isin, listing, type, composition }) => {

@@ -2,10 +2,13 @@ node_modules/
 .env
 npm-debug.log*
 
-# Claude Code
+# Claude Code files
 .claude/
 CLAUDE.md
 CLAUDE.local.md
 .mcp.json
+claude/
+.claude*
+**/CLAUDE*.md
 /claude/
 /plans/

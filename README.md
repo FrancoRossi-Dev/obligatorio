@@ -363,8 +363,10 @@ Reglas:
   `advisor` solo acceda a sus propios clientes; si el cliente es de otro
   advisor se responde **404** (no 403), para no revelar su existencia. Un
   `admin` puede consultar cualquier cliente.
-- **Vigencia:** salvo el histórico, los reportes usan solo las posiciones
-  informadas en el mes corriente (`dateOfReport`).
+- **Vigencia:** salvo el histórico, los reportes usan solo el último reporte
+  de cada tenencia (mismo instrumento en la misma cuenta bancaria), siempre
+  que su `dateOfReport` sea de los últimos 30 días. El histórico toma el
+  último reporte de cada tenencia dentro de cada mes.
 - **Moneda:** por ahora todos los montos se tratan como USD; la conversión
   multi-moneda llega con la integración de FX.
 - **Redondeo:** los porcentajes se redondean con el método del mayor resto,

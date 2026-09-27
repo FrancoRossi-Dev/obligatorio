@@ -11,7 +11,7 @@ import Client from '../v1/models/client.model.js';
 import Instrument from '../v1/models/instrument.model.js';
 import Issuer from '../v1/models/issuer.model.js';
 import Manager from '../v1/models/manager.model.js';
-import Position from '../v1/models/Position.model.js';
+import Position from '../v1/models/position.model.js';
 import User, { Advisor } from '../v1/models/user.model.js';
 import { readFile } from 'node:fs/promises';
 

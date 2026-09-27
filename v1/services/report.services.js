@@ -1,5 +1,5 @@
-import Position from '../models/Position.model.js';
-import { currentMonthFilter, monthOf } from '../utils/date.js';
+import Position from '../models/position.model.js';
+import { daysAgo, monthOf, toIsoDate } from '../utils/date.js';
 import { round, toPercentage } from '../utils/math.js';
 import {
   buildAllocation,
@@ -23,16 +23,23 @@ const REPORT_TYPES = {
 
 // @TODO definir
 // Every amount is treated as USD for now
-// All client reports but the historic one only use the latest positions: those reported this month.
+// All client reports but the historic one only use the latest positions: the most recent report of
+// each holding, as long as it was reported within the last LATEST_REPORT_DAYS.
+const LATEST_REPORT_DAYS = 30;
+
+const getReportWindow = () => ({
+  from: toIsoDate(daysAgo(LATEST_REPORT_DAYS)),
+  to: toIsoDate(new Date()),
+});
 
 // for client
 export const ClientFullReport = async (client, user) => {
-  const rows = await findPositionRows(client, { dateOfReport: currentMonthFilter() });
+  const rows = await findLatestPositionRows(client);
   const totals = buildTotals(rows);
 
   return createReport(user, REPORT_TYPES.clientFull, {
     client: toClientSummary(client),
-    period: monthOf(new Date()),
+    reportWindow: getReportWindow(),
     positions: rows,
     totals,
     composition: buildComposition(rows, totals.marketValue),
@@ -41,14 +48,14 @@ export const ClientFullReport = async (client, user) => {
 
 // by intruments
 export const ClientInstrumentReport = async (client, instrument, user) => {
-  const rows = await findPositionRows(client, { dateOfReport: currentMonthFilter() });
+  const rows = await findLatestPositionRows(client);
   const portfolioTotals = buildTotals(rows);
   const instrumentRows = rows.filter((row) => row.instrument?.id === instrument.id);
   const totals = buildTotals(instrumentRows);
 
   return createReport(user, REPORT_TYPES.clientInstrument, {
     client: toClientSummary(client),
-    period: monthOf(new Date()),
+    reportWindow: getReportWindow(),
     instrument: { id: instrument.id, name: instrument.name, type: instrument.type },
     positions: instrumentRows,
     totals,
@@ -59,14 +66,14 @@ export const ClientInstrumentReport = async (client, instrument, user) => {
 
 // by issuer
 export const ClientIssuerReport = async (client, issuer, user) => {
-  const rows = await findPositionRows(client, { dateOfReport: currentMonthFilter() });
+  const rows = await findLatestPositionRows(client);
   const portfolioTotals = buildTotals(rows);
   const issuerRows = rows.filter((row) => row.issuer?.id === issuer.id);
   const totals = buildTotals(issuerRows);
 
   return createReport(user, REPORT_TYPES.clientIssuer, {
     client: toClientSummary(client),
-    period: monthOf(new Date()),
+    reportWindow: getReportWindow(),
     issuer: { id: issuer.id, name: issuer.commercialName },
     positions: issuerRows,
     totals,
@@ -77,12 +84,12 @@ export const ClientIssuerReport = async (client, issuer, user) => {
 
 // composition
 export const ClientCompositionReport = async (client, user) => {
-  const rows = await findPositionRows(client, { dateOfReport: currentMonthFilter() });
+  const rows = await findLatestPositionRows(client);
   const totals = buildTotals(rows);
 
   return createReport(user, REPORT_TYPES.clientComposition, {
     client: toClientSummary(client),
-    period: monthOf(new Date()),
+    reportWindow: getReportWindow(),
     totals,
     composition: buildComposition(rows, totals.marketValue),
   });
@@ -90,7 +97,7 @@ export const ClientCompositionReport = async (client, user) => {
 
 // historic
 export const ClientHistoricReport = async (client, user) => {
-  const rows = await findPositionRows(client);
+  const rows = await findMonthlyPositionRows(client);
 
   const rowsByMonth = new Map();
   for (const row of rows) {
@@ -132,12 +139,50 @@ export const ClientHistoricReport = async (client, user) => {
 // advisor activity overview
 // advisor data overview (clients remain private?)
 
-const findPositionRows = async (client, filters = {}) => {
-  const positions = await Position.find({ clientId: client._id, isDeleted: false, ...filters })
-    .populate('instrumentId', 'name type')
+const findPositions = (client, filters = {}) =>
+  Position.find({ clientId: client._id, isDeleted: false, ...filters })
+    .populate('instrumentId', 'name type isin ticker')
     .populate('issuerId', 'commercialName');
 
-  return positions.map((position) =>
+const toPositionRows = (client, positions) =>
+  positions.map((position) =>
     buildPositionRow(position, client.bankAccounts.id(position.bankAccountId)),
   );
+
+// A bank reports the same holding (one instrument in one bank account) again on every statement,
+// so a holding has many Position documents over its life; populated() gives back the raw id
+const holdingKey = (position) =>
+  `${position.bankAccountId}:${position.populated('instrumentId') ?? position.instrumentId}`;
+
+// Newest first, so the first document seen for each key is the latest report
+const findLatestPositions = async (client, filters, keyOf) => {
+  const positions = await findPositions(client, filters).sort({ dateOfReport: -1, createdAt: -1 });
+
+  const latest = new Map();
+  for (const position of positions) {
+    const key = keyOf(position);
+    if (!latest.has(key)) latest.set(key, position);
+  }
+  return [...latest.values()];
 };
+
+export const findLatestPositionRows = async (client) =>
+  toPositionRows(
+    client,
+    await findLatestPositions(
+      client,
+      { dateOfReport: { $gte: daysAgo(LATEST_REPORT_DAYS) } },
+      holdingKey,
+    ),
+  );
+
+// Latest report of each holding within each month
+const findMonthlyPositionRows = async (client) =>
+  toPositionRows(
+    client,
+    await findLatestPositions(
+      client,
+      {},
+      (position) => `${monthOf(position.dateOfReport)}:${holdingKey(position)}`,
+    ),
+  );

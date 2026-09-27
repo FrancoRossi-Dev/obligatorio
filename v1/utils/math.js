@@ -20,9 +20,10 @@ export const toPercentages = (parts, total) => {
   return floored.map((value) => value / 100);
 };
 
-export const getMarketValue = (position) =>
+// Quantity times the latest known price; not the bank-reported Position.marketValue
+export const getPositionValue = (position) =>
   position.quantity * (position.currentPrice ?? position.purchasePrice);
 
 export const getCostOnPurchase = (position) => position.quantity * position.purchasePrice;
 
-export const getUnrealized = (position) => getMarketValue(position) - getCostOnPurchase(position);
+export const getUnrealized = (position) => getPositionValue(position) - getCostOnPurchase(position);
