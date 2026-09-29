@@ -5,8 +5,8 @@ centralice, para cada uno de sus clientes (`Client`), las posiciones que
 ese cliente tiene distribuidas en distintas cuentas bancarias (`bankAccounts`,
 embebidas en `Client`) y en distintos bancos (`Bank`): alta de instrumentos (acciones, bonos,
 fondos, efectivo), asignación de cada cliente a un ejecutivo de cuenta (`Manager`),
-reportes consolidados por cliente, consolidación multi-moneda contra una API de tipo de
-cambio de terceros, y un análisis de la cartera asistido por IA generativa.
+reportes consolidados por cliente, planes con límite de clientes y cuentas (`base` /
+`premium`), y un análisis de noticias de la cartera asistido por IA generativa.
 Ver [`documentation/requerimientos-api.md`](documentation/requerimientos-api.md)
 para el detalle del dominio y [`documentation/evaluacion-de-propuesta.md`](documentation/evaluacion-de-propuesta.md)
 para el porqué de cada decisión.
@@ -17,8 +17,8 @@ para el porqué de cada decisión.
 
 | | |
 | --- | --- |
-| API publicada | _pendiente de deploy_ |
-| Colección de Postman | [`documentation/postman/`](documentation/postman/) _(por ahora solo `auth`)_ |
+| API publicada | Vercel — _completar URL_ (también en `prod_base_url` de la colección) |
+| Colección de Postman | [`documentation/postman/abakus.postman_collection.json`](documentation/postman/abakus.postman_collection.json) |
 | Endpoints | [`documentation/endpoints.md`](documentation/endpoints.md) |
 | Requerimientos | [`documentation/requerimientos-api.md`](documentation/requerimientos-api.md) |
 
@@ -26,10 +26,11 @@ para el porqué de cada decisión.
 
 ## Estado del proyecto
 
-En desarrollo. El repositorio ya tiene el flujo completo `route → validator →
-controller → service → model` para la mayoría de los recursos del dominio.
+En desarrollo, a pocos días de la entrega. Todos los recursos del dominio tienen el
+flujo completo `route → middleware(s) → controller → service → model`.
 Ver el detalle funcional y los criterios de aceptación en
 [`documentation/requerimientos-api.md`](documentation/requerimientos-api.md),
+lo pendiente en [`documentation/TODO.txt`](documentation/TODO.txt)
 y el modelo de datos actual (con diagramas) en [Modelo de dominio](#modelo-de-dominio) más abajo.
 
 | Área | Estado |
@@ -37,24 +38,23 @@ y el modelo de datos actual (con diagramas) en [Modelo de dominio](#modelo-de-do
 | Scaffold Express + ruteo `/v1` | ✅ |
 | Conexión a MongoDB (Mongoose) | ✅ |
 | Modelos: `User`/`Admin`/`Advisor`, `Manager`, `Client`, `Bank`, `Instrument`, `Issuer`, `Position` | ✅ (`Client.bankAccounts` embebido, no colección propia — ver [Modelo de dominio](#modelo-de-dominio)) |
-| Middleware de autenticación (verifica el JWT `Bearer`) | ✅ |
-| Registro / login (emisión de JWT) | ✅ |
-| Logout | 🟨 (`logoutUser` y `routes/user.routes.js` existen, pero el router no está montado en `v1.routes.js`) |
-| ABM de Bancos (`/v1/bank`) | ✅ |
-| ABM de Clientes (`/v1/client`) | ✅ |
-| ABM de Ejecutivos de cuenta (`/v1/manager`) | ✅ |
-| ABM de Instrumentos (`/v1/instrument`) | ✅ |
-| ABM de Emisores (`/v1/issuer`) | ✅ |
-| ABM de Posiciones (`/v1/position`) | ✅ |
-| Reportes por cliente (`/v1/report/client/:clientId/...`) | 🟨 (completo, composición, histórico, por instrumento y por emisor; todos los montos se tratan como USD hasta integrar FX — ver [Reportes](#reportes)) |
-| Control de acceso a clientes propios (`ownedClientMiddleware`) | ✅ (aplicado en reportes) |
-| ABM de Cuentas bancarias como colección propia (`BankAccount`, límite por plan) | ⬜ (hoy son subdocumentos de `Client`, sin límite de plan aplicado) |
-| Subida de imágenes a Cloudinary | ✅ (logo del banco en `/v1/bank/:id/uploadImage`, logo del cliente en `/v1/client/:clientId/uploadImage`) |
+| Registro / login (emisión de JWT) y middleware de autenticación | ✅ |
+| Logout | ➖ JWT sin estado: el cliente descarta el token (no hay lista de tokens revocados) |
+| Roles (`authorizeMiddleware`): catálogos `Bank` e `Issuer` de escritura solo `admin` | ✅ |
+| Control de acceso a recursos propios (clientes, managers, posiciones → 404 si son de otro advisor) | ✅ |
+| ABM de Bancos, Clientes, Ejecutivos, Instrumentos, Emisores y Posiciones | ✅ |
+| Cuentas bancarias (subdocumentos de `Client`): banco válido, unicidad banco + número, baja lógica | ✅ |
+| Restricción de borrado (409 si la entidad tiene dependencias activas) | ✅ |
+| Planes `base` / `premium` (límite de 4 clientes y 4 cuentas en `base`, `GET/PATCH /v1/user/me/plan`) | ✅ (ver [Planes](#planes)) |
+| Paginación y filtros en los listados | ✅ (ver [Paginación y filtros](#paginación-y-filtros)) |
+| Alta de posiciones por ISIN (resolución del instrumento vía OpenFIGI) | ✅ |
+| Reportes por cliente (`/v1/report/client/:clientId/...`) | ✅ (todos los montos se tratan como USD — ver [Reportes](#reportes)) |
+| Análisis de noticias con IA generativa (Groq) | ✅ (`/v1/report/client/:clientId/news`) |
+| Subida de imágenes a Cloudinary | ✅ (logo del banco y del cliente) |
 | Scripts de seed (admins y datos de demo) | ✅ (ver [Scripts](#scripts)) |
-| Integración API de FX (terceros) | ⬜ |
-| Endpoint de IA generativa (análisis de cartera consolidada) | ⬜ |
-| Colección y tests de Postman | 🟨 (solo `auth`) |
-| Deploy en Vercel | ⬜ |
+| Deploy en Vercel | ✅ |
+| Colección y tests de Postman | 🟨 (en curso: faltan requests de filtros y un test por status code) |
+| Conversión multi-moneda (API de FX) | ⬜ fuera del alcance de esta entrega |
 
 ---
 
@@ -64,17 +64,13 @@ y el modelo de datos actual (con diagramas) en [Modelo de dominio](#modelo-de-do
 - **Framework:** Express 5
 - **Base de datos:** MongoDB + Mongoose
 - **Autenticación:** JWT (`jsonwebtoken`) + hashing con `bcryptjs`
-- **Validación:** Joi (validación de entrada duplicada en el backend)
+- **Validación:** Joi (body, params y query string)
 - **Almacenamiento de imágenes:** Cloudinary (subida en memoria con `multer`)
-- **IA generativa:** Groq vía API (flujo interno, no chat)
-- **Datos de mercado:** API de FX de terceros (Frankfurter) con caché; OpenFIGI para identificación de instrumentos
+- **IA generativa:** Groq (`groq-sdk`), flujo interno, no chat
+- **Datos de mercado:** OpenFIGI (vía `axios`) para identificar instrumentos por ISIN
 - **Deploy:** Vercel
 - **Documentación y tests de endpoints:** Postman
 - **Calidad de código:** ESLint (`npm run lint`)
-
-> `mongoose`, `jsonwebtoken`, `joi`, `bcryptjs`, `cloudinary`, `multer` y `cors`
-> ya están instalados (`package.json`); falta agregar el cliente del proveedor
-> de IA generativa cuando se implemente ese flujo.
 
 ---
 
@@ -117,7 +113,7 @@ La API queda disponible en `http://localhost:3000/v1`.
 | `npm start` | Levanta el servidor con `node` |
 | `npm run lint` / `npm run lint:fix` | Corre ESLint (y aplica correcciones automáticas) |
 | `ADMIN_SEED_PASSWORD=<pwd> node scripts/seed-admins.js <user> [<user> ...]` | Crea usuarios `admin` (no pueden auto-registrarse, RF11). Omite los usernames que ya existen |
-| `node scripts/seed-data.js` | Carga un advisor de demo (`demo.advisor`), bancos, emisores, instrumentos, clientes, managers y posiciones. Idempotente: borra los datos de demo previos antes de recrearlos |
+| `node scripts/seed-data.js` | Carga un advisor de demo (`demo.advisor`), bancos, emisores, instrumentos, clientes, managers y posiciones (estas desde `scripts/seed-positions-data.json`). Idempotente: borra los datos de demo previos antes de recrearlos |
 
 ---
 
@@ -133,16 +129,15 @@ Definidas en `.env` (no se versiona).
 | `SALT_ROUNDS` | Rondas de `bcrypt` para hashear contraseñas | `10` |
 | `JWT_SECRET` | Secreto para firmar los tokens | `una-clave-larga-y-aleatoria` |
 | `JWT_EXPIRES_IN` | Vigencia del token | `1d` |
-| `BASE_PLAN_ACCOUNT_LIMIT` | Máx. de `BankAccount` para el plan `base` (la letra lo llama `plus`; ver nota en `requerimientos-api.md`) — aún no se aplica | `4` |
 | `CLOUDINARY_CLOUD_NAME` | Cloud name de Cloudinary | — |
 | `CLOUDINARY_API_KEY` | API key de Cloudinary | — |
 | `CLOUDINARY_API_SECRET` | API secret de Cloudinary | — |
-| `MARKET_API_BASE_URL` | Base URL del proveedor de cotizaciones | `https://api.frankfurter.app` |
-| `MARKET_API_KEY` | API key del proveedor de cotizaciones (si aplica) | — |
-| `MARKET_CACHE_TTL_SECONDS` | TTL del caché de cotizaciones | `300` |
 | `GROQ_API_KEY` | API key de Groq (IA generativa) | — |
 | `OPEN_FIGI_API_KEY` | API key de OpenFIGI | — |
 | `ADMIN_SEED_PASSWORD` | Solo para `scripts/seed-admins.js`: contraseña de los admins creados | — |
+
+> El límite del plan `base` (4 clientes y 4 cuentas activas) no es configuración de
+> entorno sino regla de negocio: vive en `v1/constants/plans.js`.
 
 ---
 
@@ -155,15 +150,18 @@ Definidas en `.env` (no se versiona).
 ├── v1/                    # Versión 1 de la API
 │   ├── v1.routes.js       # Router raíz de /v1; monta los routers de cada recurso
 │   ├── config/            # Conexión a MongoDB y cliente de Cloudinary
-│   ├── models/            # Esquemas Mongoose (User/Admin/Advisor, Manager, Client, Bank, Instrument, Issuer, Position, RevokedToken)
+│   ├── models/            # Esquemas Mongoose (User/Admin/Advisor, Manager, Client, Bank, Instrument, Issuer, Position)
 │   ├── routes/            # Un router por recurso (auth, bank, client, instrument, issuer, manager, position, report, user)
 │   ├── controllers/       # Manejo de request/response por endpoint
-│   ├── services/          # Lógica de negocio y acceso a datos (Mongoose)
-│   ├── validators/        # Esquemas Joi de validación de entrada (body y params)
-│   ├── middlewares/       # authenticate (JWT), validatedBody, validatedParams, ownedClient,
-│   │                      # multer, requestLogger, notFound, error
-│   └── utils/             # Errores HTTP, fechas, cálculos monetarios, armado de reportes, helpers de upload
-├── scripts/               # Seeds: seed-admins.js, seed-data.js
+│   ├── services/          # Lógica de negocio y acceso a datos (Mongoose); Groq, OpenFIGI y Cloudinary
+│   ├── validators/        # Esquemas Joi de validación de entrada (body, params, paginación y filtros)
+│   ├── constants/         # Reglas fijas: tamaño de página, límite del plan base
+│   ├── middlewares/       # authenticate (JWT), authorize (roles), validatedBody/Params/Query,
+│   │                      # ownedClient/Manager/Position, advisor, clientManager, bankAccounts,
+│   │                      # planLimit, multer, requestLogger, notFound, error
+│   └── utils/             # Errores HTTP, fechas, cálculos monetarios, paginación, filtros,
+│                          # armado de reportes, helpers de instrumentos
+├── scripts/               # Seeds: seed-admins.js, seed-data.js (+ seed-positions-data.json)
 ├── documentation/         # Letra (PDF), requerimientos de API y cliente, endpoints,
 │                          # evaluación de la propuesta y colección de Postman (postman/)
 └── README.md
@@ -177,9 +175,12 @@ Definidas en `.env` (no se versiona).
 flowchart LR
     A[Cliente HTTP] --> B["route\n(v1/routes/*.routes.js)"]
     B --> C["authenticate middleware\n(JWT Bearer)"]
-    C --> D["validateBody / validateParams\n(Joi, v1/validators/*)"]
-    D --> O["ownedClientMiddleware\n(solo reportes)"]
-    O --> E["controller\n(request/response, status codes)"]
+    C --> R["authorize\n(rol: catálogos solo admin)"]
+    C --> D["validateBody / Params / Query\n(Joi, v1/validators/*)"]
+    R --> D
+    D --> O["owned* middlewares\n(recurso propio, 404 si no)"]
+    O --> P["reglas previas al controller\n(advisor, manager, cuentas, plan)"]
+    P --> E["controller\n(request/response, status codes)"]
     D --> E
     E --> F["service\n(reglas de negocio)"]
     F --> G["model\n(Mongoose, MongoDB)"]
@@ -205,9 +206,9 @@ equivalencia:
 | Banco (categoría) | `Bank` | catálogo: lo lee cualquier usuario, solo `admin` lo crea, modifica o borra (403 para `advisor`) |
 | Cuenta bancaria | `Client.bankAccounts[]` (subdocumento embebido) | no es colección propia — ver limitación abajo |
 | Emisor de un instrumento | `Issuer` | acción/corporación o gobierno; distinto de `Client`. Mismo criterio que `Bank`: escritura solo `admin` |
-| Instrumento financiero | `Instrument` | tipo único con discriminación por `type` (`stock`\|`bond`\|`fund`\|`cash`) |
+| Instrumento financiero | `Instrument` | tipo único con discriminación por `type` (`stock`\|`bond`\|`fund`); identificado por `isin` cuando se resuelve vía OpenFIGI |
 | Posición | `Position` | tenencia de un `Instrument` en una `bankAccount` de un `Client`, con cantidad y precios |
-| Plan `plus` | `Advisor.planTier: "premium"` | la letra dice `plus`, el modelo usa `premium` |
+| Plan `plus` | `Advisor.planTier: "premium"` | la letra dice `plus`, el modelo usa `premium`. `base` admite hasta 4 clientes y 4 cuentas activas (403 al superarlo) |
 
 > Ver también las notas de mapeo en [`documentation/endpoints.md`](documentation/endpoints.md) § 0.
 
@@ -215,7 +216,7 @@ equivalencia:
 
 Refleja el estado **actual** de `v1/models/*.model.js` (no el modelo aspiracional
 completo de la letra — para ese detalle ver `requerimientos-api.md` § Modelo de
-datos). Líneas sólidas = relación con `ref` de Mongoose; líneas punteadas =
+datos). Todas las colecciones tienen `createdAt`/`updatedAt` (`timestamps`). Líneas sólidas = relación con `ref` de Mongoose; líneas punteadas =
 vínculo por convención (sin `ref` ni colección propia del lado referenciado).
 
 ```mermaid
@@ -234,12 +235,14 @@ erDiagram
         string password
         date lastConnection
         string role "admin | advisor (discriminator)"
+        string planTier "solo advisor: base | premium"
+        boolean isDeleted
     }
     CLIENT ||--o{ POSITION : "clientId"
     CLIENT ||..o{ BANKACCOUNT : "embebe (subdocumento)"
     CLIENT {
         objectId advisorId FK
-        object clientDetails "commercialName, legalName, address, country"
+        object clientDetails "commercialName, legalName, address, country, logoURL"
         objectId managerId FK
         array bankAccounts "subdocumentos, no colección propia"
         boolean isDeleted
@@ -253,7 +256,6 @@ erDiagram
         boolean isDeleted
     }
     BANKACCOUNT {
-        objectId clientId FK
         objectId bankId FK
         string number
         string accountName
@@ -264,8 +266,10 @@ erDiagram
     INSTRUMENT ||--o{ POSITION : "instrumentId"
     INSTRUMENT {
         objectId issuerId FK "solo type=stock|bond"
-        string type "stock | bond | fund | cash"
+        string type "stock | bond | fund"
         string name
+        string isin UK "sparse"
+        string ticker
         object fundDetail "solo type=fund"
         boolean isDeleted
     }
@@ -276,6 +280,7 @@ erDiagram
         string legalName UK
         string address
         string country
+        boolean isDeleted
     }
     POSITION {
         objectId clientId FK
@@ -285,14 +290,11 @@ erDiagram
         number quantity
         number purchasePrice
         number currentPrice
+        number marketValue
         string currency
         date dateOfPurchase
         date dateOfReport "índice (clientId, dateOfReport)"
         boolean isDeleted
-    }
-    REVOKEDTOKEN {
-        string jti UK
-        date expiresAt "TTL index, sin relación con el resto"
     }
 ```
 
@@ -309,6 +311,7 @@ classDiagram
         +string password
         +Date lastConnection
         +string role
+        +boolean isDeleted
     }
     class Admin
     class Advisor {
@@ -322,6 +325,8 @@ classDiagram
     class AdvisorDetails {
         +string comercialName
         +string legalName
+        +string address
+        +string country
         +string document
         +string phone
         +string contactEmail
@@ -334,13 +339,58 @@ classDiagram
 `Position.bankAccountId` apunta a un subdocumento dentro de `Client.bankAccounts[]`,
 no a una colección propia — por eso no tiene `ref` en el schema. Implicancias:
 no se puede hacer `findById`/`populate` directo sobre una cuenta sin conocer
-antes a qué `Client` pertenece, actualizar una sola cuenta implica reenviar el
-arreglo completo (`findOneAndUpdate` reemplaza el arreglo, no lo mergea), y no
-hay forma simple de garantizar `number` único entre clientes. Se mantiene así
+antes a qué `Client` pertenece, y actualizar una sola cuenta implica reenviar el
+arreglo completo (`findOneAndUpdate` reemplaza el arreglo, no lo mergea).
+
+Para compensarlo, el alta y el `PATCH` de un cliente validan las cuentas en el
+servicio (`bankAccounts.middleware.js`):
+
+- cada `bankId` tiene que ser un banco existente y activo (422);
+- el `PATCH` recibe la lista completa con el `_id` de las cuentas existentes; una
+  cuenta no se puede quitar del arreglo (422), solo marcar `isDeleted`, y no si
+  tiene posiciones activas (409);
+- banco y número de una cuenta existente son inmutables (422);
+- banco + número es único entre las cuentas activas de clientes activos (409). Se
+  valida en el servicio y no con un índice único, porque un índice sobre el arreglo
+  embebido choca con clientes sin cuentas y con cuentas dadas de baja. Se mantiene así
 porque cada `Client` tiene, en la práctica, un puñado de cuentas (no es una
 regla de negocio, solo el dato observado); si eso cambia, migrar a una
 colección `BankAccount` independiente referenciada por `clientId` es la salida
 natural.
+
+---
+
+## Paginación y filtros
+
+Los listados (`GET /` de cada recurso) están paginados: `?page=&limit=`, por defecto
+`page=1` y `limit=10`, con `limit` hasta `100`. Responden
+`{ data, total, page, limit, pages }`, del más nuevo al más viejo. Un parámetro
+inválido o desconocido da **400**; un listado vacío da **200** con `data: []`.
+
+Filtros (combinables entre sí y con la paginación). Los textos exactos no distinguen
+mayúsculas; `q` busca "contiene" y se escapa, nunca se interpreta como regex.
+
+| Listado | Filtros |
+| --- | --- |
+| `GET /v1/position` | `type`, `clientId`, `instrumentId`, `currency`, `from` / `to` (fechas ISO sobre `dateOfReport`) |
+| `GET /v1/client` | `q` (nombre comercial o razón social), `country`, `managerId`, `bankId`, `region` |
+| `GET /v1/instrument` | `type`, `q` (nombre o ticker), `isin` |
+| `GET /v1/bank` | `country`, `region` |
+
+Un advisor solo ve lo propio aunque filtre por un `clientId` ajeno. Detalle en
+[`documentation/endpoints.md`](documentation/endpoints.md) § 0.
+
+---
+
+## Planes
+
+Cada `Advisor` tiene un plan (`planTier`): `base` (por defecto) o `premium`.
+
+- En `base` se admiten hasta **4 clientes activos** y **4 cuentas bancarias activas**
+  (`BASE_PLAN_LIMIT`); superarlo al crear o editar un cliente responde **403**.
+  Si un `admin` crea o reasigna un cliente, se controla contra el plan del advisor destino.
+- `GET /v1/user/me/plan` devuelve el plan y el uso actual; `PATCH /v1/user/me/plan`
+  pasa a `premium` (sin límite). Solo para `advisor`.
 
 ---
 
@@ -371,8 +421,8 @@ Reglas:
   de cada tenencia (mismo instrumento en la misma cuenta bancaria), siempre
   que su `dateOfReport` sea de los últimos 30 días. El histórico toma el
   último reporte de cada tenencia dentro de cada mes.
-- **Moneda:** por ahora todos los montos se tratan como USD; la conversión
-  multi-moneda llega con la integración de FX.
+- **Moneda:** todos los montos se tratan como USD; la conversión multi-moneda
+  (API de FX) queda fuera de esta entrega.
 - **Redondeo:** los porcentajes se redondean con el método del mayor resto,
   para que la suma siga dando el total (`v1/utils/math.js`).
 
@@ -427,16 +477,20 @@ Los endpoints se documentan y prueban con **Postman**:
 
 - Una única colección que agrupa carpetas por recurso.
 - Un request por endpoint, con tests para **cada status code** que devuelve.
-- Variable de colección `prod_base_url` apuntando a la API publicada.
+- Variable de colección `prod_base_url` apuntando a la API publicada, y variables
+  encadenadas (`token`, `clientId`, `positionId`, …) para correrla completa con el Runner.
 
-La colección exportada (JSON) se versiona en [`documentation/`](documentation/).
+La colección exportada (JSON v2.1) está en
+[`documentation/postman/abakus.postman_collection.json`](documentation/postman/abakus.postman_collection.json).
 
 ---
 
 ## Deploy
 
-Deploy en **Vercel**. La URL pública se documenta en la tabla del inicio de este
-README y en el archivo de entrega.
+Deploy en **Vercel** contra MongoDB Atlas. Las variables de entorno de la tabla
+anterior se cargan en el proyecto de Vercel, y los seeds se corrieron contra la base
+de producción. La URL pública se documenta en la tabla del inicio de este README y
+en el archivo de entrega.
 
 ---
 

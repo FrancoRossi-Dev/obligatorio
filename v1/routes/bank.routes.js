@@ -12,17 +12,16 @@ import {
   deleteBank,
   uploadBankLogo,
 } from '../controllers/bank.controller.js';
-import { bankParamsSchema, createBankSchema, updateBankSchema } from '../validators/bank.validators.js';
-import { paginationQuerySchema } from '../validators/pagination.validators.js';
+import { bankParamsSchema, bankQuerySchema, createBankSchema, updateBankSchema } from '../validators/bank.validators.js';
 
 const router = express.Router({ mergeParams: true });
 
-const paginated = validateQueryMiddleware(paginationQuerySchema);
+const listQuery = validateQueryMiddleware(bankQuerySchema);
 
 // The catalog is shared by every advisor: anyone can read it, only an admin can change it
 const adminOnly = authorizeMiddleware('admin');
 
-router.get('/', paginated, getBanks).post('/', adminOnly, validateBodyMiddleware(createBankSchema), createBank);
+router.get('/', listQuery, getBanks).post('/', adminOnly, validateBodyMiddleware(createBankSchema), createBank);
 
 router
   .get('/:id', getBankByID)

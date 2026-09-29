@@ -26,11 +26,12 @@ const POSITION_MESSAGES = {
 // Advisors only list the positions of their own clients; admins list every position
 export const getPositions = async (req, res) => {
   const { id, role } = req.decoded;
-  let filter = {};
+  let scope = {};
   if (role === 'advisor') {
-    filter = { clientId: { $in: await getClientIdsByAdvisorService(id) } };
+    scope = { clientId: { $in: await getClientIdsByAdvisorService(id) } };
   }
-  const positions = await getPositionsService(filter, req.validatedQuery);
+  const { page, limit, ...filters } = req.validatedQuery;
+  const positions = await getPositionsService(scope, filters, { page, limit });
   res.status(200).json(positions);
 };
 

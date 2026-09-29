@@ -4,9 +4,18 @@ import { ERRORS, httpError } from '../utils/http-error.js';
 import { findOrCreateIssuerService } from './issuer.services.js';
 import { lookupIsinsService, toInstrumentType } from './openfigi.services.js';
 import { paginate } from '../utils/pagination.js';
+import { containsText } from '../utils/filters.js';
 
-export const getInstrumentsService = async (pagination) =>
-  paginate(Instrument, { isDeleted: false }, pagination);
+const buildInstrumentFilter = (filter, { type, q, isin }) => {
+  if (type) filter.type = type;
+  if (q) filter.$or = [{ name: containsText(q) }, { ticker: containsText(q) }];
+  // ISINs are stored uppercase and the validator uppercases the query, so an exact match works
+  if (isin) filter.isin = isin;
+  return filter;
+};
+
+export const getInstrumentsService = async (filters, pagination) =>
+  paginate(Instrument, buildInstrumentFilter({ isDeleted: false }, filters), pagination);
 
 export const getInstrumentByIdService = async (id) => {
   const instrument = await Instrument.findOne({ _id: id, isDeleted: false });

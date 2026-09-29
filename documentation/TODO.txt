@@ -77,11 +77,12 @@ anterior, pero hay que reservarle al menos un dia.
     devuelve { data, total, page, limit, pages }. limit por defecto 10, maximo 100
     (v1/utils/pagination.js, v1/validators/pagination.validators.js).
 [x] Aplicarlo en client, position e instrument (y en manager, bank e issuer si da el tiempo).
-[ ] Filtros minimos:
-    [ ] Client: texto libre por nombre (commercialName o legalName) y managerId.
-    [ ] Position: clientId, instrumentId, currency y rango de dateOfReport.
-    [ ] Instrument: type, name e isin.
-    [ ] Bank: country y region.
+[x] Filtros (v1/utils/filters.js, v1/validators/filter.validators.js; ver endpoints.md § 0):
+    [x] Client: q (commercialName o legalName), country, managerId, bankId y region (via bancos).
+    [x] Position: type (del instrumento), clientId, instrumentId, currency, from/to sobre dateOfReport.
+    [x] Instrument: type, q (name o ticker) e isin.
+    [x] Bank: country y region.
+[ ] Postman: requests de filtros en las carpetas 3, 5, 7 y 9.
 
 
 5. SUBIDA DE IMAGENES

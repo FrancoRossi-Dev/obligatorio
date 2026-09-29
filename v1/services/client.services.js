@@ -3,9 +3,32 @@ import Client from '../models/client.model.js';
 import Position from '../models/position.model.js';
 import { ERRORS, httpError } from '../utils/http-error.js';
 import { paginate } from '../utils/pagination.js';
+import { containsText, equalsIgnoreCase } from '../utils/filters.js';
 
-export const getClientsService = async (filter, pagination) =>
-  paginate(Client, { ...filter, isDeleted: false }, pagination);
+// bankId and region go into a single $elemMatch, so both must hold on the same active account
+const buildClientFilter = async (filter, { q, country, managerId, bankId, region }) => {
+  if (q) {
+    filter.$or = [
+      { 'clientDetails.commercialName': containsText(q) },
+      { 'clientDetails.legalName': containsText(q) },
+    ];
+  }
+  if (country) filter['clientDetails.country'] = equalsIgnoreCase(country);
+  if (managerId) filter.managerId = managerId;
+  if (bankId || region) {
+    const bankCondition = {};
+    if (bankId) bankCondition.$eq = bankId;
+    if (region) {
+      bankCondition.$in = await Bank.distinct('_id', { region: equalsIgnoreCase(region), isDeleted: false });
+    }
+    filter.bankAccounts = { $elemMatch: { bankId: bankCondition, isDeleted: false } };
+  }
+  return filter;
+};
+
+// scope limits an advisor to its own clients; filters come from the query string
+export const getClientsService = async (scope, filters, pagination) =>
+  paginate(Client, await buildClientFilter({ ...scope, isDeleted: false }, filters), pagination);
 
 export const getClientIdsByAdvisorService = async (advisorId) => {
   const ids = await Client.distinct('_id', { advisorId, isDeleted: false });

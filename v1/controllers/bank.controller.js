@@ -18,7 +18,8 @@ const BANK_MESSAGES = {
 };
 
 export const getBanks = async (req, res) => {
-  const banks = await getBanksService(req.validatedQuery);
+  const { page, limit, ...filters } = req.validatedQuery;
+  const banks = await getBanksService(filters, { page, limit });
   res.status(200).json(banks);
 };
 

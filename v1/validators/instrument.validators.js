@@ -1,4 +1,7 @@
 import Joi from "joi";
+import { paginationQuerySchema } from "./pagination.validators.js";
+import { filterText } from "./filter.validators.js";
+import { INSTRUMENT_TYPES } from "../models/instrument.model.js";
 
 export const createInstrumentSchema = Joi.object({
   name: Joi.string().trim().max(100).required().messages({
@@ -79,3 +82,12 @@ export const updateInstrumentSchema = Joi.object({
   .messages({
     "object.min": "At least one field must be provided for update.",
   });
+
+// GET /v1/instrument filters; q searches the name and the ticker
+export const instrumentQuerySchema = paginationQuerySchema.keys({
+  type: Joi.string().valid(...INSTRUMENT_TYPES).messages({
+    "any.only": `Instrument type must be one of: ${INSTRUMENT_TYPES.join(", ")}.`,
+  }),
+  q: filterText("Name"),
+  isin: filterText("ISIN").uppercase(),
+});

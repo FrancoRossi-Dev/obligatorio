@@ -3,8 +3,16 @@ import Bank from '../models/bank.model.js';
 import Client from '../models/client.model.js';
 import { ERRORS, httpError } from '../utils/http-error.js';
 import { paginate } from '../utils/pagination.js';
+import { equalsIgnoreCase } from '../utils/filters.js';
 
-export const getBanksService = async (pagination) => paginate(Bank, { isDeleted: false }, pagination);
+const buildBankFilter = (filter, { country, region }) => {
+  if (country) filter.country = equalsIgnoreCase(country);
+  if (region) filter.region = equalsIgnoreCase(region);
+  return filter;
+};
+
+export const getBanksService = async (filters, pagination) =>
+  paginate(Bank, buildBankFilter({ isDeleted: false }, filters), pagination);
 
 export const getBankByIDService = async (id) => {
   const bank = await Bank.findById(id);

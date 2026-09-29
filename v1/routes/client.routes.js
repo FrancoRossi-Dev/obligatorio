@@ -24,19 +24,19 @@ import {
 } from '../controllers/client.controller.js';
 import {
   clientParamsSchema,
+  clientQuerySchema,
   createClientSchema,
   updateClientSchema,
 } from '../validators/client.validators.js';
-import { paginationQuerySchema } from '../validators/pagination.validators.js';
 
 const router = express.Router({ mergeParams: true });
 
-const paginated = validateQueryMiddleware(paginationQuerySchema);
+const listQuery = validateQueryMiddleware(clientQuerySchema);
 
 const ownedClient = [validateParamsMiddleware(clientParamsSchema), ownedClientMiddleware];
 
 router
-  .get('/', paginated, getClients)
+  .get('/', listQuery, getClients)
   .post(
     '/',
     validateBodyMiddleware(createClientSchema),

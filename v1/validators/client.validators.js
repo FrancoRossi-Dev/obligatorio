@@ -1,4 +1,6 @@
 import Joi from "joi";
+import { paginationQuerySchema } from "./pagination.validators.js";
+import { filterId, filterText } from "./filter.validators.js";
 
 // Lowercased so ids compare equal to the ones Mongoose returns
 export const clientParamsSchema = Joi.object({
@@ -137,3 +139,13 @@ export const updateClientSchema = Joi.object({
   .messages({
     "object.min": "At least one field must be provided for update.",
   });
+
+
+// GET /v1/client filters; bankId and region match clients with an active account in that bank / region
+export const clientQuerySchema = paginationQuerySchema.keys({
+  q: filterText("Name"),
+  country: filterText("Country"),
+  managerId: filterId("Manager"),
+  bankId: filterId("Bank"),
+  region: filterText("Region"),
+});
