@@ -1,10 +1,9 @@
 import Position from '../models/position.model.js';
 import { getPositionValue, round } from '../utils/math.js';
+import { paginate } from '../utils/pagination.js';
 
-export const getPositionsService = async (filter = {}) => {
-  const positions = await Position.find({ ...filter, isDeleted: false });
-  return positions;
-};
+export const getPositionsService = async (filter, pagination) =>
+  paginate(Position, { ...filter, isDeleted: false }, pagination);
 
 export const getPositionByIdService = async (id) => {
   const position = await Position.findOne({ _id: id, isDeleted: false });

@@ -26,7 +26,7 @@ anterior, pero hay que reservarle al menos un dia.
     - ValidationError de Mongoose: 400.
 [ ] Validar :id con validateParamsMiddleware en bank, instrument, issuer, manager y position
     (como ya hacen client y report).
-[ ] Listados vacios: devolver 200 con lista vacia (o pagina vacia) en vez de 404 en todos los GET /.
+[x] Listados vacios: devolver 200 con lista vacia (o pagina vacia) en vez de 404 en todos los GET /.
 [ ] Unificar controllers: usar throw httpError(...) en lugar de res.status(404).json(...) sueltos,
     para que todas las respuestas de error tengan el mismo formato { message, details }.
 
@@ -52,17 +52,31 @@ anterior, pero hay que reservarle al menos un dia.
 
 3. CATEGORIAS: RESTRICCION DE BORRADO
 
-[ ] deleteBankService: si hay cuentas activas con ese banco (Client.bankAccounts.bankId), 409.
-[ ] deleteIssuerService: pasar a borrado logico (agregar isDeleted al modelo) y rechazar con 409
+[x] deleteBankService: si hay cuentas activas con ese banco (Client.bankAccounts.bankId), 409.
+[x] deleteIssuerService: pasar a borrado logico (agregar isDeleted al modelo) y rechazar con 409
     si tiene instrumentos asociados.
-[ ] Agregar los mensajes a ERRORS (bankInUse, issuerInUse).
+[x] deleteClientService: 409 si tiene cuentas activas (RF18).
+[x] deleteInstrumentService: 409 si tiene posiciones activas.
+[x] deleteManagerService: 409 si tiene clientes activos asignados.
+[x] Agregar los mensajes a ERRORS (bankInUse, clientHasAccounts, issuerInUse, instrumentInUse, managerInUse).
+[x] Cuentas bancarias: el PATCH del cliente recibe la lista completa con el _id de las cuentas
+    existentes (se conserva la identidad para Position.bankAccountId). No se pueden quitar del
+    array (422), solo marcar isDeleted, y no si tienen posiciones activas (409).
+[x] Alta/edicion de cliente: validar que cada bankId exista y no este borrado (422).
+[x] bankId validado como ObjectId en Joi (antes un id mal formado daba 500).
+[x] Banco y numero de una cuenta existente son inmutables (422); para cambiarlos, baja y alta.
+[x] Banco + numero unico entre cuentas activas de clientes activos (409). Se valida en el
+    servicio, no con indice unico: un indice sobre el array embebido choca con clientes sin
+    cuentas y con cuentas dadas de baja.
+[ ] DELETE /v1/instrument/:id no tiene adminOnly (es catalogo global, como Issuer).
 
 
 4. PAGINACION Y FILTROS
 
-[ ] Helper comun: ?page= y ?limit= validados con Joi (400 si son invalidos). La respuesta
-    devuelve { data, total, page, limit, pages }.
-[ ] Aplicarlo en client, position e instrument (y en manager, bank e issuer si da el tiempo).
+[x] Helper comun: ?page= y ?limit= validados con Joi (400 si son invalidos). La respuesta
+    devuelve { data, total, page, limit, pages }. limit por defecto 10, maximo 100
+    (v1/utils/pagination.js, v1/validators/pagination.validators.js).
+[x] Aplicarlo en client, position e instrument (y en manager, bank e issuer si da el tiempo).
 [ ] Filtros minimos:
     [ ] Client: texto libre por nombre (commercialName o legalName) y managerId.
     [ ] Position: clientId, instrumentId, currency y rango de dateOfReport.
@@ -92,15 +106,15 @@ anterior, pero hay que reservarle al menos un dia.
 
 7. DEPLOY EN VERCEL
 
-[ ] connectDB: sacar el process.exit(1) y cachear la conexion (en serverless se reutilizan
+[x] connectDB: sacar el process.exit(1) y cachear la conexion (en serverless se reutilizan
     las instancias).
-[ ] Entry point: confirmar que Vercel use app.js (export default) o agregar vercel.json.
-[ ] MongoDB Atlas: habilitar acceso desde cualquier IP (0.0.0.0/0).
-[ ] Variables de entorno en Vercel: MONGODB_URI, JWT_SECRET, JWT_EXPIRES_IN, SALT_ROUNDS,
+[x] Entry point: confirmar que Vercel use app.js (export default) o agregar vercel.json.
+[x] MongoDB Atlas: habilitar acceso desde cualquier IP (0.0.0.0/0).
+[x] Variables de entorno en Vercel: MONGODB_URI, JWT_SECRET, JWT_EXPIRES_IN, SALT_ROUNDS,
     MONGO_DUPLICATE_KEY, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET,
     GROQ_API_KEY y OPEN_FIGI_API_KEY.
-[ ] Correr los seeds contra la base de produccion (seed-admins.js y seed-data.js).
-[ ] Probar cada recurso contra la URL publicada.
+[x] Correr los seeds contra la base de produccion (seed-admins.js y seed-data.js).
+[x] Probar cada recurso contra la URL publicada.
 
 
 8. COLECCION DE POSTMAN
@@ -118,7 +132,7 @@ anterior, pero hay que reservarle al menos un dia.
     [ ] Registro invalido, despues registro OK (guarda las credenciales), despues registro
         duplicado con 409.
     [ ] 4 altas en plan base, la 5ta rechazada con 403, cambio de plan, y la 5ta OK.
-    [ ] Borrar un banco con cuentas: 409.
+    [x] Borrar un banco con cuentas: 409 (seccion 12, junto con el resto de integridad referencial).
 [ ] Nombres unicos por corrida ({{$timestamp}}) para que la coleccion se pueda correr varias veces.
 [ ] Correr la coleccion completa con el Runner contra produccion sin fallos.
 [ ] Exportar a JSON (v2.1).
@@ -126,7 +140,7 @@ anterior, pero hay que reservarle al menos un dia.
 
 9. LIMPIEZA Y DOCUMENTACION
 
-[ ] Borrar v1/services/example.dragones.services.js.
+[x] Borrar v1/services/example.dragones.services.js.
 [x] Borrar obtenerConsultaGroqService (sin uso) en groq.services.js.
 [ ] Revisar user.controller.js: usa try/catch con next, pero Express 5 ya propaga los errores
     async, asi que se puede simplificar.

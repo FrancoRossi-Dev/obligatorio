@@ -8,7 +8,7 @@ import {
   canAccessClient,
   getClientByIdService,
   getClientsByIdsService,
-  getClientsService,
+  getClientIdsByAdvisorService,
 } from '../services/client.services.js';
 import { resolveInstrumentsByIsinService } from '../services/instruments.services.js';
 
@@ -17,7 +17,6 @@ const POSITION_MESSAGES = {
   unresolvedIsins: 'One or more positions reference an ISIN that could not be resolved to an instrument.',
   clientNotFound: 'Client not found.',
   bankAccountNotFound: 'Bank account not found for this client.',
-  empty: 'No positions are registered yet.',
   notFound: 'Position not found.',
   created: 'Positions have been registered successfully.',
   updated: 'Position has been updated successfully.',
@@ -29,11 +28,9 @@ export const getPositions = async (req, res) => {
   const { id, role } = req.decoded;
   let filter = {};
   if (role === 'advisor') {
-    const clients = await getClientsService({ advisorId: id });
-    filter = { clientId: { $in: clients.map((client) => client._id) } };
+    filter = { clientId: { $in: await getClientIdsByAdvisorService(id) } };
   }
-  const positions = await getPositionsService(filter);
-  if (positions.length === 0) return res.status(404).json({ message: POSITION_MESSAGES.empty });
+  const positions = await getPositionsService(filter, req.validatedQuery);
   res.status(200).json(positions);
 };
 

@@ -157,6 +157,26 @@
     {
       "key": "bankLogoUrl",
       "value": ""
+    },
+    {
+      "key": "client5AccountId",
+      "value": ""
+    },
+    {
+      "key": "client5AccountsDeactivated",
+      "value": ""
+    },
+    {
+      "key": "client1AccountsDeactivated",
+      "value": ""
+    },
+    {
+      "key": "client1AccountsRenumbered",
+      "value": ""
+    },
+    {
+      "key": "client1AccountsRepeated",
+      "value": ""
     }
   ],
   "item": [
@@ -1499,13 +1519,20 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Returns a list', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('Returns a page of results', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  ['total', 'page', 'limit', 'pages'].forEach((key) => pm.expect(body[key]).to.be.a('number'));",
+                  "  pm.expect(body.page).to.eql(1);",
+                  "  pm.expect(body.limit).to.eql(100);",
+                  "  pm.expect(body.data.length).to.be.at.most(body.limit);",
+                  "});",
                   "pm.test(\"Includes the bank just created\", () => {",
-                  "  const ids = pm.response.json().map((b) => b._id);",
+                  "  const ids = pm.response.json().data.map((b) => b._id);",
                   "  pm.expect(ids).to.include(pm.collectionVariables.get('bankId'));",
                   "});",
                   "pm.test(\"Never lists deleted banks\", () => {",
-                  "  pm.response.json().forEach((b) => pm.expect(b.isDeleted).to.eql(false));",
+                  "  pm.response.json().data.forEach((b) => pm.expect(b.isDeleted).to.eql(false));",
                   "});"
                 ]
               }
@@ -1519,7 +1546,7 @@
                 "value": "Bearer {{advisor_token}}"
               }
             ],
-            "url": "{{prod_base_url}}/v1/bank"
+            "url": "{{prod_base_url}}/v1/bank?limit=100"
           }
         },
         {
@@ -1963,6 +1990,120 @@
             ],
             "url": "{{prod_base_url}}/v1/bank/{{bankId}}"
           }
+        },
+        {
+          "name": "3.20 List banks one per page -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns a single bank', () => pm.expect(pm.response.json().data).to.have.lengthOf(1));",
+                  "pm.test('One page per bank', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.limit).to.eql(1);",
+                  "  pm.expect(body.pages).to.eql(body.total);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank?page=1&limit=1"
+          }
+        },
+        {
+          "name": "3.21 List banks with page 0 -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test(\"Reports the invalid page\", () => {",
+                  "  const { details } = pm.response.json();",
+                  "  pm.expect(details).to.deep.include({ field: 'page', message: \"Page must be at least 1.\" });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank?page=0"
+          }
+        },
+        {
+          "name": "3.22 List banks with a non-numeric page -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test(\"Reports the invalid page\", () => {",
+                  "  const { details } = pm.response.json();",
+                  "  pm.expect(details).to.deep.include({ field: 'page', message: \"Page must be a number.\" });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank?page=abc"
+          }
+        },
+        {
+          "name": "3.23 List banks above the page size cap -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test(\"Reports the invalid limit\", () => {",
+                  "  const { details } = pm.response.json();",
+                  "  pm.expect(details).to.deep.include({ field: 'limit', message: \"Limit must be at most 100.\" });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank?limit=101"
+          }
         }
       ]
     },
@@ -2151,9 +2292,16 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Returns a list', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('Returns a page of results', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  ['total', 'page', 'limit', 'pages'].forEach((key) => pm.expect(body[key]).to.be.a('number'));",
+                  "  pm.expect(body.page).to.eql(1);",
+                  "  pm.expect(body.limit).to.eql(100);",
+                  "  pm.expect(body.data.length).to.be.at.most(body.limit);",
+                  "});",
                   "pm.test(\"Includes the issuer just created\", () => {",
-                  "  pm.expect(pm.response.json().map((i) => i._id)).to.include(pm.collectionVariables.get('issuerId'));",
+                  "  pm.expect(pm.response.json().data.map((i) => i._id)).to.include(pm.collectionVariables.get('issuerId'));",
                   "});"
                 ]
               }
@@ -2167,7 +2315,7 @@
                 "value": "Bearer {{advisor_token}}"
               }
             ],
-            "url": "{{prod_base_url}}/v1/issuer"
+            "url": "{{prod_base_url}}/v1/issuer?limit=100"
           }
         },
         {
@@ -2886,9 +3034,16 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Returns a list', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('Returns a page of results', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  ['total', 'page', 'limit', 'pages'].forEach((key) => pm.expect(body[key]).to.be.a('number'));",
+                  "  pm.expect(body.page).to.eql(1);",
+                  "  pm.expect(body.limit).to.eql(100);",
+                  "  pm.expect(body.data.length).to.be.at.most(body.limit);",
+                  "});",
                   "pm.test(\"Includes both new instruments\", () => {",
-                  "  const ids = pm.response.json().map((i) => i._id);",
+                  "  const ids = pm.response.json().data.map((i) => i._id);",
                   "  pm.expect(ids).to.include(pm.collectionVariables.get('instrumentId'));",
                   "  pm.expect(ids).to.include(pm.collectionVariables.get('fundInstrumentId'));",
                   "});"
@@ -2904,7 +3059,7 @@
                 "value": "Bearer {{advisor_token}}"
               }
             ],
-            "url": "{{prod_base_url}}/v1/instrument"
+            "url": "{{prod_base_url}}/v1/instrument?limit=100"
           }
         },
         {
@@ -3346,9 +3501,16 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Returns a list', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('Returns a page of results', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  ['total', 'page', 'limit', 'pages'].forEach((key) => pm.expect(body[key]).to.be.a('number'));",
+                  "  pm.expect(body.page).to.eql(1);",
+                  "  pm.expect(body.limit).to.eql(100);",
+                  "  pm.expect(body.data.length).to.be.at.most(body.limit);",
+                  "});",
                   "pm.test(\"Includes the manager just created\", () => {",
-                  "  pm.expect(pm.response.json().map((m) => m._id)).to.include(pm.collectionVariables.get('managerId'));",
+                  "  pm.expect(pm.response.json().data.map((m) => m._id)).to.include(pm.collectionVariables.get('managerId'));",
                   "});"
                 ]
               }
@@ -3362,7 +3524,7 @@
                 "value": "Bearer {{advisor_token}}"
               }
             ],
-            "url": "{{prod_base_url}}/v1/manager"
+            "url": "{{prod_base_url}}/v1/manager?limit=100"
           }
         },
         {
@@ -3761,12 +3923,20 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns a page of results', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  ['total', 'page', 'limit', 'pages'].forEach((key) => pm.expect(body[key]).to.be.a('number'));",
+                  "  pm.expect(body.page).to.eql(1);",
+                  "  pm.expect(body.limit).to.eql(100);",
+                  "  pm.expect(body.data.length).to.be.at.most(body.limit);",
+                  "});",
                   "pm.test(\"Only lists advisor B managers\", () => {",
                   "  const advisorId = pm.collectionVariables.get('advisor_b_id');",
-                  "  pm.response.json().forEach((m) => pm.expect(m.advisorId).to.eql(advisorId));",
+                  "  pm.response.json().data.forEach((m) => pm.expect(m.advisorId).to.eql(advisorId));",
                   "});",
                   "pm.test(\"Does not include advisor A's manager\", () => {",
-                  "  pm.expect(pm.response.json().map((m) => m._id)).to.not.include(pm.collectionVariables.get('managerId'));",
+                  "  pm.expect(pm.response.json().data.map((m) => m._id)).to.not.include(pm.collectionVariables.get('managerId'));",
                   "});"
                 ]
               }
@@ -3780,7 +3950,7 @@
                 "value": "Bearer {{advisor_b_token}}"
               }
             ],
-            "url": "{{prod_base_url}}/v1/manager"
+            "url": "{{prod_base_url}}/v1/manager?limit=100"
           }
         },
         {
@@ -4273,13 +4443,20 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Returns a list', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('Returns a page of results', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  ['total', 'page', 'limit', 'pages'].forEach((key) => pm.expect(body[key]).to.be.a('number'));",
+                  "  pm.expect(body.page).to.eql(1);",
+                  "  pm.expect(body.limit).to.eql(100);",
+                  "  pm.expect(body.data.length).to.be.at.most(body.limit);",
+                  "});",
                   "pm.test(\"Only lists advisor A clients\", () => {",
                   "  const advisorId = pm.collectionVariables.get('advisor_id');",
-                  "  pm.response.json().forEach((c) => pm.expect(c.advisorId).to.eql(advisorId));",
+                  "  pm.response.json().data.forEach((c) => pm.expect(c.advisorId).to.eql(advisorId));",
                   "});",
                   "pm.test(\"Includes client 1\", () => {",
-                  "  pm.expect(pm.response.json().map((c) => c._id)).to.include(pm.collectionVariables.get('clientId'));",
+                  "  pm.expect(pm.response.json().data.map((c) => c._id)).to.include(pm.collectionVariables.get('clientId'));",
                   "});"
                 ]
               }
@@ -4293,7 +4470,7 @@
                 "value": "Bearer {{advisor_token}}"
               }
             ],
-            "url": "{{prod_base_url}}/v1/client"
+            "url": "{{prod_base_url}}/v1/client?limit=100"
           }
         },
         {
@@ -5553,7 +5730,112 @@
           }
         },
         {
-          "name": "8.11 Delete client 5 -> 200",
+          "name": "8.11 Delete client 5 while it has an active bank account -> 409 (RF18)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"This client still has active bank accounts and cannot be removed.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"This client still has active bank accounts and cannot be removed.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{client5Id}}"
+          }
+        },
+        {
+          "name": "8.12 Get client 5 to deactivate its bank account -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"Stores its accounts marked as deleted, keeping their _id\", () => {",
+                  "  const accounts = pm.response.json().bankAccounts;",
+                  "  pm.expect(accounts).to.have.lengthOf(1);",
+                  "  pm.collectionVariables.set('client5AccountId', accounts[0]._id);",
+                  "  const deactivated = accounts.map(({ _id, bankId, number, accountName, currency }) =>",
+                  "    ({ _id, bankId, number, accountName, currency, isDeleted: true }));",
+                  "  pm.collectionVariables.set('client5AccountsDeactivated', JSON.stringify(deactivated));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{client5Id}}"
+          }
+        },
+        {
+          "name": "8.13 Deactivate client 5 bank account -> 200, same account id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"The account keeps its id and is marked as deleted\", () => {",
+                  "  const [account] = pm.response.json().client.bankAccounts;",
+                  "  pm.expect(account._id).to.eql(pm.collectionVariables.get('client5AccountId'));",
+                  "  pm.expect(account.isDeleted).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{client5Id}}",
+            "description": "bankAccounts is the full list: stored accounts are sent back with their _id and are marked isDeleted instead of dropped, so positions keep pointing to them.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankAccounts\": {{client5AccountsDeactivated}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "8.14 Delete client 5 -> 200",
           "event": [
             {
               "listen": "test",
@@ -5578,7 +5860,7 @@
           }
         },
         {
-          "name": "8.12 Get deleted client -> 404",
+          "name": "8.15 Get deleted client -> 404",
           "event": [
             {
               "listen": "test",
@@ -5598,6 +5880,66 @@
           ],
           "request": {
             "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{client5Id}}"
+          }
+        },
+        {
+          "name": "8.16 Report on a deleted client -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The requested client does not exist.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The requested client does not exist.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/report/client/{{client5Id}}"
+          }
+        },
+        {
+          "name": "8.17 Delete an already deleted client -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The requested client does not exist.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The requested client does not exist.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
             "header": [
               {
                 "key": "Authorization",
@@ -6191,16 +6533,23 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Returns a list', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('Returns a page of results', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  ['total', 'page', 'limit', 'pages'].forEach((key) => pm.expect(body[key]).to.be.a('number'));",
+                  "  pm.expect(body.page).to.eql(1);",
+                  "  pm.expect(body.limit).to.eql(100);",
+                  "  pm.expect(body.data.length).to.be.at.most(body.limit);",
+                  "});",
                   "pm.test(\"Includes the new position\", () => {",
-                  "  pm.expect(pm.response.json().map((p) => p._id)).to.include(pm.collectionVariables.get('positionId'));",
+                  "  pm.expect(pm.response.json().data.map((p) => p._id)).to.include(pm.collectionVariables.get('positionId'));",
                   "});",
                   "pm.test(\"Keeps the market value reported by the bank\", () => {",
-                  "  const position = pm.response.json().find((p) => p._id === pm.collectionVariables.get('positionId'));",
+                  "  const position = pm.response.json().data.find((p) => p._id === pm.collectionVariables.get('positionId'));",
                   "  pm.expect(position.marketValue).to.eql(17550);",
                   "});",
                   "pm.test(\"Calculates the market value of a manual entry (20 x 175.5)\", () => {",
-                  "  const position = pm.response.json().find((p) => p._id === pm.collectionVariables.get('positionToDeleteId'));",
+                  "  const position = pm.response.json().data.find((p) => p._id === pm.collectionVariables.get('positionToDeleteId'));",
                   "  pm.expect(position.marketValue).to.eql(3510);",
                   "});"
                 ]
@@ -6215,7 +6564,7 @@
                 "value": "Bearer {{advisor_token}}"
               }
             ],
-            "url": "{{prod_base_url}}/v1/position"
+            "url": "{{prod_base_url}}/v1/position?limit=100"
           }
         },
         {
@@ -6618,12 +6967,20 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns a page of results', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  ['total', 'page', 'limit', 'pages'].forEach((key) => pm.expect(body[key]).to.be.a('number'));",
+                  "  pm.expect(body.page).to.eql(1);",
+                  "  pm.expect(body.limit).to.eql(100);",
+                  "  pm.expect(body.data.length).to.be.at.most(body.limit);",
+                  "});",
                   "pm.test(\"Only lists positions of advisor B clients\", () => {",
                   "  const clientId = pm.collectionVariables.get('clientBId');",
-                  "  pm.response.json().forEach((p) => pm.expect(p.clientId).to.eql(clientId));",
+                  "  pm.response.json().data.forEach((p) => pm.expect(p.clientId).to.eql(clientId));",
                   "});",
                   "pm.test(\"Does not include advisor A's position\", () => {",
-                  "  pm.expect(pm.response.json().map((p) => p._id)).to.not.include(pm.collectionVariables.get('positionId'));",
+                  "  pm.expect(pm.response.json().data.map((p) => p._id)).to.not.include(pm.collectionVariables.get('positionId'));",
                   "});"
                 ]
               }
@@ -6637,7 +6994,7 @@
                 "value": "Bearer {{advisor_b_token}}"
               }
             ],
-            "url": "{{prod_base_url}}/v1/position"
+            "url": "{{prod_base_url}}/v1/position?limit=100"
           }
         },
         {
@@ -7949,11 +8306,161 @@
       ]
     },
     {
-      "name": "12. Cleanup checks",
-      "description": "Soft deletes leave the data out of every read.",
+      "name": "12. Referential integrity",
+      "description": "Nothing still in use can be removed (RF17, RF18), and bank accounts keep their identity: they are never dropped from a client, only marked as deleted.",
       "item": [
         {
-          "name": "12.1 Delete client 1 -> 200",
+          "name": "12.1 Delete client 1 while it has an active bank account -> 409 (RF18)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"This client still has active bank accounts and cannot be removed.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"This client still has active bank accounts and cannot be removed.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{clientId}}"
+          }
+        },
+        {
+          "name": "12.2 Delete a bank that holds client accounts -> 409 (RF17)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"This bank still holds active client accounts and cannot be removed.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"This bank still holds active client accounts and cannot be removed.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank/{{bankId}}"
+          }
+        },
+        {
+          "name": "12.3 Delete an issuer with active instruments -> 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"This issuer still has active instruments and cannot be removed.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"This issuer still has active instruments and cannot be removed.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/issuer/{{issuerId}}"
+          }
+        },
+        {
+          "name": "12.4 Delete an instrument held in active positions -> 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"This instrument is still held in active positions and cannot be removed.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"This instrument is still held in active positions and cannot be removed.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/instrument/{{instrumentId}}"
+          }
+        },
+        {
+          "name": "12.5 Delete a manager assigned to active clients -> 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"This manager is still assigned to active clients and cannot be removed.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"This manager is still assigned to active clients and cannot be removed.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/manager/{{managerId}}"
+          }
+        },
+        {
+          "name": "12.6 Get client 1 to build bank account updates -> 200",
           "event": [
             {
               "listen": "test",
@@ -7961,37 +8468,15 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"Message is \\\"Client has been removed successfully.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"Client has been removed successfully.\"));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{advisor_token}}"
-              }
-            ],
-            "url": "{{prod_base_url}}/v1/client/{{clientId}}"
-          }
-        },
-        {
-          "name": "12.2 Get deleted client -> 404",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
-                  "pm.test('Error uses the { message, details } shape', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
-                  "  pm.expect(body).to.have.property('details');",
-                  "});",
-                  "pm.test(\"Message is \\\"The requested client does not exist.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The requested client does not exist.\"));"
+                  "pm.test(\"Stores the account list variants used below\", () => {",
+                  "  const accounts = pm.response.json().bankAccounts.map(({ _id, bankId, number, accountName, currency, isDeleted }) =>",
+                  "    ({ _id, bankId, number, accountName, currency, isDeleted }));",
+                  "  pm.expect(accounts.map(({ _id }) => _id)).to.include(pm.collectionVariables.get('bankAccountId'));",
+                  "  pm.collectionVariables.set('client1AccountsDeactivated', JSON.stringify(accounts.map((a) => ({ ...a, isDeleted: true }))));",
+                  "  pm.collectionVariables.set('client1AccountsRenumbered', JSON.stringify(accounts.map((a, i) => (i === 0 ? { ...a, number: `${a.number}-X` } : a))));",
+                  "  const { _id, ...copy } = accounts[0];",
+                  "  pm.collectionVariables.set('client1AccountsRepeated', JSON.stringify([...accounts, copy]));",
+                  "});"
                 ]
               }
             }
@@ -8008,56 +8493,373 @@
           }
         },
         {
-          "name": "12.3 Report on a deleted client -> 404",
+          "name": "12.7 Deactivate a bank account that holds active positions -> 409",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
                   "pm.test('Error uses the { message, details } shape', () => {",
                   "  const body = pm.response.json();",
                   "  pm.expect(body).to.have.property('message').that.is.a('string');",
                   "  pm.expect(body).to.have.property('details');",
                   "});",
-                  "pm.test(\"Message is \\\"The requested client does not exist.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The requested client does not exist.\"));"
+                  "pm.test(\"Message is \\\"This bank account still holds active positions and cannot be removed.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"This bank account still holds active positions and cannot be removed.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{clientId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankAccounts\": {{client1AccountsDeactivated}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "12.8 Update client dropping its bank accounts -> 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"Bank accounts cannot be removed; mark them as deleted instead.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"Bank accounts cannot be removed; mark them as deleted instead.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{clientId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankAccounts\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "12.9 Update client changing an existing account's number -> 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The bank and number of an existing account cannot change; mark it as deleted and add a new one.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The bank and number of an existing account cannot change; mark it as deleted and add a new one.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{clientId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankAccounts\": {{client1AccountsRenumbered}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "12.10 Update client with another client's bank account id -> 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The selected bank account does not belong to this client.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The selected bank account does not belong to this client.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{clientId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankAccounts\": [\n    {\n      \"_id\": \"{{bankAccountBId}}\",\n      \"bankId\": \"{{bankId}}\",\n      \"number\": \"UY-B-1-{{run_id}}\",\n      \"accountName\": \"Advisor B account\",\n      \"currency\": \"USD\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "12.11 Update client repeating one of its bank accounts -> 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"This bank account is already registered.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"This bank account is already registered.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client/{{clientId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankAccounts\": {{client1AccountsRepeated}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "12.12 Create client with an account in a deleted bank -> 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The selected bank does not exist.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The selected bank does not exist.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientDetails\": {\n    \"commercialName\": \"Test Client Deleted Bank {{run_id}}\",\n    \"legalName\": \"Test Client Deleted Bank {{run_id}} SRL\"\n  },\n  \"managerId\": \"{{managerId}}\",\n  \"bankAccounts\": [\n    {\n      \"bankId\": \"{{bankToDeleteId}}\",\n      \"number\": \"UY-DB-1-{{run_id}}\",\n      \"accountName\": \"Test Client Deleted Bank account 1\",\n      \"currency\": \"USD\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "12.13 Create client with a malformed bank id -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"The submitted data is invalid.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The submitted data is invalid.\"));",
+                  "pm.test('Reports a problem with \"bankId\"', () => {",
+                  "  pm.expect(pm.response.json().details.map(({ field }) => field)).to.include('bankAccounts.0.bankId');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientDetails\": {\n    \"commercialName\": \"Test Client Bad Bank {{run_id}}\",\n    \"legalName\": \"Test Client Bad Bank {{run_id}} SRL\"\n  },\n  \"managerId\": \"{{managerId}}\",\n  \"bankAccounts\": [\n    {\n      \"bankId\": \"not-an-id\",\n      \"number\": \"UY-BB-1-{{run_id}}\",\n      \"accountName\": \"Test Client Bad Bank account 1\",\n      \"currency\": \"USD\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "12.14 Create client with an account another client already registered -> 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error uses the { message, details } shape', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
+                  "  pm.expect(body).to.have.property('details');",
+                  "});",
+                  "pm.test(\"Message is \\\"This bank account is already registered.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"This bank account is already registered.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientDetails\": {\n    \"commercialName\": \"Test Client Duplicate {{run_id}}\",\n    \"legalName\": \"Test Client Duplicate {{run_id}} SRL\"\n  },\n  \"managerId\": \"{{managerId}}\",\n  \"bankAccounts\": [\n    {\n      \"bankId\": \"{{bankId}}\",\n      \"number\": \"UY-1-1-{{run_id}}\",\n      \"accountName\": \"Test Client Duplicate account 1\",\n      \"currency\": \"USD\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "12.15 Client 1 and its account are unchanged after the attempts -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"The account keeps its id, number and active state\", () => {",
+                  "  const account = pm.response.json().bankAccounts.find(({ _id }) => _id === pm.collectionVariables.get('bankAccountId'));",
+                  "  pm.expect(account).to.exist;",
+                  "  pm.expect(account.isDeleted).to.eql(false);",
+                  "  pm.expect(account.number).to.eql(`UY-1-1-${pm.collectionVariables.get('run_id')}`);",
+                  "});"
                 ]
               }
             }
           ],
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{advisor_token}}"
-              }
-            ],
-            "url": "{{prod_base_url}}/v1/report/client/{{clientId}}"
-          }
-        },
-        {
-          "name": "12.4 Delete an already deleted client -> 404",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
-                  "pm.test('Error uses the { message, details } shape', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.have.property('message').that.is.a('string');",
-                  "  pm.expect(body).to.have.property('details');",
-                  "});",
-                  "pm.test(\"Message is \\\"The requested client does not exist.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The requested client does not exist.\"));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
             "header": [
               {
                 "key": "Authorization",

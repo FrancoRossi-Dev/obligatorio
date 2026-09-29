@@ -20,6 +20,10 @@ const issuerSchema = new mongoose.Schema(
     country: {
       type: String,
     }, // maybe-payment-type
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );

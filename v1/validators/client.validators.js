@@ -47,8 +47,10 @@ export const createClientSchema = Joi.object({
   bankAccounts: Joi.array()
     .items(
       Joi.object({
-        bankId: Joi.string().required().messages({
+        bankId: Joi.string().hex().length(24).required().messages({
           "string.empty": "Bank ID is required.",
+          "string.hex": "Bank ID is not valid.",
+          "string.length": "Bank ID is not valid.",
           "any.required": "Bank ID is required.",
         }),
         number: Joi.string().trim().required().messages({
@@ -100,10 +102,17 @@ export const updateClientSchema = Joi.object({
     "string.length": "Manager id is not valid.",
   }),
 
+  // The full list: stored accounts carry their _id, new ones omit it
   bankAccounts: Joi.array().items(
     Joi.object({
-      bankId: Joi.string().required().messages({
+      _id: Joi.string().hex().length(24).messages({
+        "string.hex": "Bank account id is not valid.",
+        "string.length": "Bank account id is not valid.",
+      }),
+      bankId: Joi.string().hex().length(24).required().messages({
         "string.empty": "Bank ID is required.",
+        "string.hex": "Bank ID is not valid.",
+        "string.length": "Bank ID is not valid.",
         "any.required": "Bank ID is required.",
       }),
       number: Joi.string().trim().required().messages({
@@ -120,7 +129,9 @@ export const updateClientSchema = Joi.object({
       }),
       isDeleted: Joi.boolean().default(false)
     }),
-  ),
+  )
+    .unique("_id", { ignoreUndefined: true })
+    .messages({ "array.unique": "Each bank account can only be listed once." }),
 })
   .min(1)
   .messages({

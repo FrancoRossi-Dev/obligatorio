@@ -7,7 +7,6 @@ import {
 } from '../services/instruments.services.js';
 
 const INSTRUMENT_MESSAGES = {
-  empty: 'No instruments are registered yet.',
   notFound: 'Instrument not found.',
   created: 'Instrument has been registered successfully.',
   updated: 'Instrument has been updated successfully.',
@@ -15,10 +14,7 @@ const INSTRUMENT_MESSAGES = {
 };
 
 export const getInstruments = async (req, res) => {
-  const instruments = await getInstrumentsService();
-  if (instruments.length === 0) {
-    return res.status(404).json({ message: INSTRUMENT_MESSAGES.empty });
-  }
+  const instruments = await getInstrumentsService(req.validatedQuery);
   res.status(200).json(instruments);
 };
 

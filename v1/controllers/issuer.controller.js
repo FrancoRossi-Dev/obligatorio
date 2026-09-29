@@ -7,7 +7,6 @@ import {
 } from '../services/issuer.services.js';
 
 const ISSUER_MESSAGES = {
-  empty: 'No issuers are registered yet.',
   notFound: 'Issuer not found.',
   created: 'Issuer has been registered successfully.',
   updated: 'Issuer has been updated successfully.',
@@ -15,8 +14,7 @@ const ISSUER_MESSAGES = {
 };
 
 export const getIssuers = async (req, res) => {
-  const issuers = await getIssuersService();
-  if (issuers.length === 0) return res.status(404).json({ message: ISSUER_MESSAGES.empty });
+  const issuers = await getIssuersService(req.validatedQuery);
   res.status(200).json(issuers);
 };
 

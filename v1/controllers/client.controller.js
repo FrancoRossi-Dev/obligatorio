@@ -9,7 +9,6 @@ import { uploadImageService } from '../services/upload.services.js';
 const CLIENT_LOGO_FOLDER = 'clients';
 
 const CLIENT_MESSAGES = {
-  empty: 'No clients are registered yet.',
   notFound: 'Client not found.',
   created: 'Client has been registered successfully.',
   updated: 'Client has been updated successfully.',
@@ -20,8 +19,7 @@ const CLIENT_MESSAGES = {
 // Advisors only list their own clients; admins list every client
 export const getClients = async (req, res) => {
   const { id, role } = req.decoded;
-  const clients = await getClientsService(role === 'advisor' ? { advisorId: id } : {});
-  if (clients.length === 0) return res.status(404).json({ message: CLIENT_MESSAGES.empty });
+  const clients = await getClientsService(role === 'advisor' ? { advisorId: id } : {}, req.validatedQuery);
   res.status(200).json(clients);
 };
 

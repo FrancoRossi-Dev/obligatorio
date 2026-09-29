@@ -1,6 +1,7 @@
 import express from 'express';
 import { authorizeMiddleware } from '../middlewares/authorize.middleware.js';
 import { validateBodyMiddleware } from '../middlewares/validatedBody.middleware.js';
+import { validateQueryMiddleware } from '../middlewares/validatedQuery.middleware.js';
 import { validateParamsMiddleware } from '../middlewares/validatedParams.middleware.js';
 import { uploadImageMiddleware } from '../middlewares/multer.middleware.js';
 import {
@@ -12,13 +13,16 @@ import {
   uploadBankLogo,
 } from '../controllers/bank.controller.js';
 import { bankParamsSchema, createBankSchema, updateBankSchema } from '../validators/bank.validators.js';
+import { paginationQuerySchema } from '../validators/pagination.validators.js';
 
 const router = express.Router({ mergeParams: true });
+
+const paginated = validateQueryMiddleware(paginationQuerySchema);
 
 // The catalog is shared by every advisor: anyone can read it, only an admin can change it
 const adminOnly = authorizeMiddleware('admin');
 
-router.get('/', getBanks).post('/', adminOnly, validateBodyMiddleware(createBankSchema), createBank);
+router.get('/', paginated, getBanks).post('/', adminOnly, validateBodyMiddleware(createBankSchema), createBank);
 
 router
   .get('/:id', getBankByID)
