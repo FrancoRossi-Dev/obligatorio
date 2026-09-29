@@ -1,5 +1,6 @@
 import express from 'express';
 import { validateBodyMiddleware } from '../middlewares/validatedBody.middleware.js';
+import { validateQueryMiddleware } from '../middlewares/validatedQuery.middleware.js';
 import {
   createInstrument,
   getInstruments,
@@ -11,11 +12,14 @@ import {
   createInstrumentSchema,
   updateInstrumentSchema,
 } from '../validators/instrument.validators.js';
+import { paginationQuerySchema } from '../validators/pagination.validators.js';
 
 const router = express.Router({ mergeParams: true });
 
+const paginated = validateQueryMiddleware(paginationQuerySchema);
+
 router
-  .get('/', getInstruments)
+  .get('/', paginated, getInstruments)
   .post('/', validateBodyMiddleware(createInstrumentSchema), createInstrument);
 
 router

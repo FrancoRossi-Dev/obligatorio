@@ -1,9 +1,10 @@
+import Client from '../models/client.model.js';
 import Manager from '../models/manager.model.js';
+import { ERRORS, httpError } from '../utils/http-error.js';
+import { paginate } from '../utils/pagination.js';
 
-export const getManagersService = async (filter = {}) => {
-  const managers = await Manager.find({ ...filter, isDeleted: false });
-  return managers;
-};
+export const getManagersService = async (filter, pagination) =>
+  paginate(Manager, { ...filter, isDeleted: false }, pagination);
 
 export const getManagerByIdService = async (id) => {
   const manager = await Manager.findOne({ _id: id, isDeleted: false });
@@ -27,8 +28,10 @@ export const updateManagerService = async (id, managerData) => {
   return manager;
 };
 
-// Soft delete: the model carries an isDeleted flag
+// Soft delete, blocked while an active client is still assigned to the manager
 export const deleteManagerService = async (id) => {
+  if (await Client.exists({ managerId: id, isDeleted: false })) throw httpError(ERRORS.managerInUse);
+
   const manager = await Manager.findOneAndUpdate(
     { _id: id, isDeleted: false },
     { isDeleted: true },

@@ -6,7 +6,6 @@ import {
 } from '../services/manager.services.js';
 
 const MANAGER_MESSAGES = {
-  empty: 'No managers are registered yet.',
   notFound: 'Manager not found.',
   created: 'Manager has been registered successfully.',
   updated: 'Manager has been updated successfully.',
@@ -16,8 +15,7 @@ const MANAGER_MESSAGES = {
 // Advisors only list their own team; admins list every manager
 export const getManagers = async (req, res) => {
   const { id, role } = req.decoded;
-  const managers = await getManagersService(role === 'advisor' ? { advisorId: id } : {});
-  if (managers.length === 0) return res.status(404).json({ message: MANAGER_MESSAGES.empty });
+  const managers = await getManagersService(role === 'advisor' ? { advisorId: id } : {}, req.validatedQuery);
   res.status(200).json(managers);
 };
 

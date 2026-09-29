@@ -4,19 +4,8 @@ import mongoose from 'mongoose';
 // fundDetail only applies (and is only required) when type === 'fund'.
 // issuerId only applies (and is only required) when type is 'stock' or 'bond'.
 
-const INSTRUMENT_TYPES = ['stock', 'bond', 'fund', 'cash'];
-const FUND_COMPOSITIONS = ['equity', 'bond', 'balanced', 'alternative'];
-
-const fundDetailSchema = new mongoose.Schema(
-  {
-    composition: {
-      type: String,
-      enum: FUND_COMPOSITIONS,
-      required: true,
-    },
-  },
-  { _id: false },
-);
+const INSTRUMENT_TYPES = ['stock', 'bond', 'fund'];
+const SECURITY_TYPE = [];
 
 const instrumentSchema = new mongoose.Schema(
   {
@@ -36,12 +25,6 @@ const instrumentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    fundDetail: {
-      type: fundDetailSchema,
-      required() {
-        return this.type === 'fund';
-      },
-    },
     // Market identifiers; bank imports resolve instruments by ISIN through OpenFIGI.
     // Cash and manually created instruments may have none, hence sparse.
     isin: {
@@ -49,10 +32,17 @@ const instrumentSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
-    figi: {
+    ticker: {
       type: String,
     },
-    ticker: {
+    exchCode: {
+      type: String,
+    },
+    securityType: {
+      type: String,
+      enum: SECURITY_TYPE,
+    },
+    securityType2: {
       type: String,
     },
     isDeleted: {

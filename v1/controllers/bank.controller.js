@@ -10,7 +10,6 @@ import { uploadImageService } from '../services/upload.services.js';
 const BANK_LOGO_FOLDER = 'banks';
 
 const BANK_MESSAGES = {
-  empty: 'No banks are registered yet.',
   notFound: 'Bank not found.',
   created: 'Bank has been registered successfully.',
   updated: 'Bank has been updated successfully.',
@@ -19,8 +18,7 @@ const BANK_MESSAGES = {
 };
 
 export const getBanks = async (req, res) => {
-  const banks = await getBanksService();
-  if (banks.length === 0) return res.status(404).json({ message: BANK_MESSAGES.empty });
+  const banks = await getBanksService(req.validatedQuery);
   res.status(200).json(banks);
 };
 

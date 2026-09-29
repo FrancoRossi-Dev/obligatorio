@@ -1,11 +1,10 @@
 import mongoose from 'mongoose';
 import Bank from '../models/bank.model.js';
 import Client from '../models/client.model.js';
+import { ERRORS, httpError } from '../utils/http-error.js';
+import { paginate } from '../utils/pagination.js';
 
-export const getBanksService = async () => {
-  const banks = await Bank.find({ isDeleted: false });
-  return banks;
-};
+export const getBanksService = async (pagination) => paginate(Bank, { isDeleted: false }, pagination);
 
 export const getBankByIDService = async (id) => {
   const bank = await Bank.findById(id);
@@ -23,9 +22,17 @@ export const updateBankService = async (id, bankData) => {
   return bank;
 };
 
+// A bank can't be removed while an active client still holds an active account in it
 export const deleteBankService = async (id) => {
-  const bank = await Bank.findById(id);
+  const bank = await Bank.findOne({ _id: id, isDeleted: false });
   if (!bank) return null;
+
+  const inUse = await Client.exists({
+    isDeleted: false,
+    bankAccounts: { $elemMatch: { bankId: bank._id, isDeleted: false } },
+  });
+  if (inUse) throw httpError(ERRORS.bankInUse);
+
   bank.isDeleted = true;
   await bank.save();
   return bank;

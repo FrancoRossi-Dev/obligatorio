@@ -1,11 +1,12 @@
 import Instrument from '../models/instrument.model.js';
+import Position from '../models/position.model.js';
+import { ERRORS, httpError } from '../utils/http-error.js';
 import { findOrCreateIssuerService } from './issuer.services.js';
 import { lookupIsinsService, toInstrumentType } from './openfigi.services.js';
+import { paginate } from '../utils/pagination.js';
 
-export const getInstrumentsService = async () => {
-  const instruments = await Instrument.find({ isDeleted: false });
-  return instruments;
-};
+export const getInstrumentsService = async (pagination) =>
+  paginate(Instrument, { isDeleted: false }, pagination);
 
 export const getInstrumentByIdService = async (id) => {
   const instrument = await Instrument.findOne({ _id: id, isDeleted: false });
@@ -93,8 +94,10 @@ export const resolveInstrumentsByIsinService = async (isins, fundCompositions) =
   return { instruments, failures };
 };
 
-// Soft delete: the model carries an isDeleted flag
+// Soft delete, blocked while an active position still holds the instrument
 export const deleteInstrumentService = async (id) => {
+  if (await Position.exists({ instrumentId: id, isDeleted: false })) throw httpError(ERRORS.instrumentInUse);
+
   const instrument = await Instrument.findOneAndUpdate(
     { _id: id, isDeleted: false },
     { isDeleted: true },
