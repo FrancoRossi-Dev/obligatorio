@@ -4,8 +4,7 @@ import mongoose from 'mongoose';
 // fundDetail only applies (and is only required) when type === 'fund'.
 // issuerId only applies (and is only required) when type is 'stock' or 'bond'.
 
-export const INSTRUMENT_TYPES = ['stock', 'bond', 'fund'];
-const SECURITY_TYPE = [];
+export const INSTRUMENT_TYPES = ['stock', 'bond', 'fund', 'other'];
 
 const instrumentSchema = new mongoose.Schema(
   {
@@ -32,15 +31,20 @@ const instrumentSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
+    // Composite FIGI when OpenFIGI has one: the country-level listing, not a single exchange
+    figi: {
+      type: String,
+    },
     ticker: {
       type: String,
     },
     exchCode: {
       type: String,
     },
+    // OpenFIGI's own classification, kept verbatim; normalizeSecurityType maps it to type.
+    // No enum: OpenFIGI has hundreds of values and a closed list would reject real ISINs.
     securityType: {
       type: String,
-      enum: SECURITY_TYPE,
     },
     securityType2: {
       type: String,

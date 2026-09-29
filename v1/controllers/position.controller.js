@@ -58,7 +58,6 @@ const findReferenceErrors = (positionsData, clients, user) => {
 // Keyed by the failure reasons resolveInstrumentsByIsinService reports
 const ISIN_MESSAGES = {
   notFound: 'No security is registered under this ISIN.',
-  unsupported: 'This ISIN identifies an asset class Abakus does not support.',
   fundCompositionMissing: 'Fund composition is required the first time a fund is imported.',
   deleted: 'The instrument for this ISIN has been removed from Abakus.',
 };

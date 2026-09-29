@@ -3476,7 +3476,7 @@
                   "pm.test('Status is 400', () => pm.response.to.have.status(400));",
                   "pm.test('Reports the invalid type', () => {",
                   "  const { details } = pm.response.json();",
-                  "  pm.expect(details).to.deep.include({ field: 'type', message: \"Instrument type must be one of: stock, bond, fund.\" });",
+                  "  pm.expect(details).to.deep.include({ field: 'type', message: \"Instrument type must be one of: stock, bond, fund, other.\" });",
                   "});"
                 ]
               }
@@ -3491,6 +3491,139 @@
               }
             ],
             "url": "{{prod_base_url}}/v1/instrument?type=crypto"
+          }
+        },
+        {
+          "name": "5.20 Create instrument with a malformed FIGI -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test(\"Message is \\\"The submitted data is invalid.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The submitted data is invalid.\"));",
+                  "pm.test('Reports the malformed FIGI', () => {",
+                  "  const { details } = pm.response.json();",
+                  "  pm.expect(details).to.deep.include({ field: 'figi', message: 'FIGI must be a 12-character alphanumeric identifier.' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/instrument",
+            "description": "OpenFIGI reference data is optional, but when sent it must be well formed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Corp Common Stock {{run_id}}\",\n  \"type\": \"stock\",\n  \"issuerId\": \"{{issuerId}}\",\n  \"figi\": \"not-a-figi\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "5.21 Update instrument with an empty exchange code -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test(\"Message is \\\"The submitted data is invalid.\\\"\", () => pm.expect(pm.response.json().message).to.eql(\"The submitted data is invalid.\"));",
+                  "pm.test('Reports the empty exchange code', () => {",
+                  "  const { details } = pm.response.json();",
+                  "  pm.expect(details).to.deep.include({ field: 'exchCode', message: 'Exchange code cannot be empty.' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/instrument/{{instrumentId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"exchCode\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "5.22 Add OpenFIGI reference data to an existing instrument -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Stores FIGI and exchange code in uppercase', () => {",
+                  "  const { instrument } = pm.response.json();",
+                  "  pm.expect(instrument.figi).to.eql('BBG000TEST01');",
+                  "  pm.expect(instrument.exchCode).to.eql('US');",
+                  "});",
+                  "pm.test('Stores the security types verbatim', () => {",
+                  "  const { instrument } = pm.response.json();",
+                  "  pm.expect(instrument.securityType).to.eql('Common Stock');",
+                  "  pm.expect(instrument.securityType2).to.eql('Common Stock');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/instrument/{{instrumentId}}",
+            "description": "Reference data is optional at creation and can be filled in later.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"figi\": \"bbg000test01\",\n  \"exchCode\": \"us\",\n  \"securityType\": \"Common Stock\",\n  \"securityType2\": \"Common Stock\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           }
         }
       ]
@@ -6741,7 +6874,7 @@
           }
         },
         {
-          "name": "9.12 Create position by ISIN (resolved through OpenFIGI) -> 201",
+          "name": "9.12 Create position by an ISIN Abakus already knows (resolved from the database) -> 201",
           "event": [
             {
               "listen": "test",
@@ -6771,7 +6904,7 @@
               }
             ],
             "url": "{{prod_base_url}}/v1/position",
-            "description": "Apple Inc. If Abakus does not know the ISIN yet, the instrument and its issuer are created from OpenFIGI data.",
+            "description": "Apple Inc. is loaded by the seed, so the instrument is taken from the database and OpenFIGI is not called.",
             "body": {
               "mode": "raw",
               "raw": "[\n  {\n    \"clientId\": \"{{clientId}}\",\n    \"bankAccountId\": \"{{bankAccountId}}\",\n    \"quantity\": 40,\n    \"purchasePrice\": 180,\n    \"currentPrice\": 228.3,\n    \"marketValue\": 9132,\n    \"currency\": \"USD\",\n    \"dateOfPurchase\": \"2025-03-14\",\n    \"isin\": \"US0378331005\"\n  }\n]",
@@ -6784,7 +6917,85 @@
           }
         },
         {
-          "name": "9.13 Create two positions at once, entered manually without market value -> 201",
+          "name": "9.13 Create position by an ISIN Abakus does not know (resolved through OpenFIGI) -> 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test(\"Returns the new position ids\", () => {",
+                  "  const { positionIDs } = pm.response.json();",
+                  "  pm.expect(positionIDs).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/position",
+            "description": "Johnson & Johnson is not in the seed. On the first run against a database the instrument and its issuer are created from OpenFIGI data; later runs find it in the database.",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"clientId\": \"{{clientId}}\",\n    \"bankAccountId\": \"{{bankAccountId}}\",\n    \"quantity\": 15,\n    \"purchasePrice\": 152,\n    \"currentPrice\": 160.5,\n    \"marketValue\": 2407.5,\n    \"currency\": \"USD\",\n    \"dateOfPurchase\": \"2025-03-14\",\n    \"isin\": \"US4781601046\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "9.14 The imported instrument carries OpenFIGI reference data -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Classified as a stock through its security type', () => {",
+                  "  const [instrument] = pm.response.json().data;",
+                  "  pm.expect(instrument.type).to.eql('stock');",
+                  "  pm.expect(instrument.securityType).to.eql('Common Stock');",
+                  "  pm.expect(instrument.securityType2).to.eql('Common Stock');",
+                  "});",
+                  "pm.test('Keeps the US listing, not a foreign one', () => {",
+                  "  const [instrument] = pm.response.json().data;",
+                  "  pm.expect(instrument.ticker).to.eql('JNJ');",
+                  "  pm.expect(instrument.exchCode).to.eql('US');",
+                  "  pm.expect(instrument.figi).to.eql('BBG000BMHYD1');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/instrument?isin=US4781601046"
+          }
+        },
+        {
+          "name": "9.15 Create two positions at once, entered manually without market value -> 201",
           "event": [
             {
               "listen": "test",
@@ -6827,7 +7038,7 @@
           }
         },
         {
-          "name": "9.14 List positions -> 200",
+          "name": "9.16 List positions -> 200",
           "event": [
             {
               "listen": "test",
@@ -6870,7 +7081,7 @@
           }
         },
         {
-          "name": "9.15 Get position by id -> 200",
+          "name": "9.17 Get position by id -> 200",
           "event": [
             {
               "listen": "test",
@@ -6902,7 +7113,7 @@
           }
         },
         {
-          "name": "9.16 Get nonexistent position -> 404",
+          "name": "9.18 Get nonexistent position -> 404",
           "event": [
             {
               "listen": "test",
@@ -6932,7 +7143,7 @@
           }
         },
         {
-          "name": "9.17 Update position with empty body -> 400",
+          "name": "9.19 Update position with empty body -> 400",
           "event": [
             {
               "listen": "test",
@@ -6975,7 +7186,7 @@
           }
         },
         {
-          "name": "9.18 Update position with a zero price -> 400",
+          "name": "9.20 Update position with a zero price -> 400",
           "event": [
             {
               "listen": "test",
@@ -7019,7 +7230,7 @@
           }
         },
         {
-          "name": "9.19 Update position -> 200",
+          "name": "9.21 Update position -> 200",
           "event": [
             {
               "listen": "test",
@@ -7060,7 +7271,7 @@
           }
         },
         {
-          "name": "9.20 Update nonexistent position -> 404",
+          "name": "9.22 Update nonexistent position -> 404",
           "event": [
             {
               "listen": "test",
@@ -7103,7 +7314,7 @@
           }
         },
         {
-          "name": "9.21 Delete position -> 200",
+          "name": "9.23 Delete position -> 200",
           "event": [
             {
               "listen": "test",
@@ -7128,7 +7339,7 @@
           }
         },
         {
-          "name": "9.22 Get deleted position -> 404",
+          "name": "9.24 Get deleted position -> 404",
           "event": [
             {
               "listen": "test",
@@ -7158,7 +7369,7 @@
           }
         },
         {
-          "name": "9.23 Delete nonexistent position -> 404",
+          "name": "9.25 Delete nonexistent position -> 404",
           "event": [
             {
               "listen": "test",
@@ -7188,7 +7399,7 @@
           }
         },
         {
-          "name": "9.24 Get position with an invalid id -> 400",
+          "name": "9.26 Get position with an invalid id -> 400",
           "event": [
             {
               "listen": "test",
@@ -7219,7 +7430,7 @@
           }
         },
         {
-          "name": "9.25 Advisor B creates a position for its own client -> 201",
+          "name": "9.27 Advisor B creates a position for its own client -> 201",
           "event": [
             {
               "listen": "test",
@@ -7261,7 +7472,7 @@
           }
         },
         {
-          "name": "9.26 List positions as advisor B -> 200, only its own clients",
+          "name": "9.28 List positions as advisor B -> 200, only its own clients",
           "event": [
             {
               "listen": "test",
@@ -7300,7 +7511,7 @@
           }
         },
         {
-          "name": "9.27 Get another advisor's position -> 404 (existence is not revealed)",
+          "name": "9.29 Get another advisor's position -> 404 (existence is not revealed)",
           "event": [
             {
               "listen": "test",
@@ -7330,7 +7541,7 @@
           }
         },
         {
-          "name": "9.28 Update another advisor's position -> 404",
+          "name": "9.30 Update another advisor's position -> 404",
           "event": [
             {
               "listen": "test",
@@ -7373,7 +7584,7 @@
           }
         },
         {
-          "name": "9.29 Delete another advisor's position -> 404",
+          "name": "9.31 Delete another advisor's position -> 404",
           "event": [
             {
               "listen": "test",
@@ -7403,7 +7614,7 @@
           }
         },
         {
-          "name": "9.30 Move a position to another advisor's client -> 404",
+          "name": "9.32 Move a position to another advisor's client -> 404",
           "event": [
             {
               "listen": "test",
@@ -7447,7 +7658,7 @@
           }
         },
         {
-          "name": "9.31 Move a position to another client's bank account -> 404",
+          "name": "9.33 Move a position to another client's bank account -> 404",
           "event": [
             {
               "listen": "test",
@@ -7491,7 +7702,7 @@
           }
         },
         {
-          "name": "9.32 Position is unchanged after the attempts -> 200",
+          "name": "9.34 Position is unchanged after the attempts -> 200",
           "event": [
             {
               "listen": "test",
@@ -7521,7 +7732,7 @@
           }
         },
         {
-          "name": "9.33 Admin gets any position -> 200",
+          "name": "9.35 Admin gets any position -> 200",
           "event": [
             {
               "listen": "test",
@@ -7545,7 +7756,7 @@
           }
         },
         {
-          "name": "9.34 Filter positions by client and instrument type -> 200",
+          "name": "9.36 Filter positions by client and instrument type -> 200",
           "event": [
             {
               "listen": "test",
@@ -7553,7 +7764,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Every result is client 1's', () => {",
+                  "pm.test(\"Every result is client 1's\", () => {",
                   "  const { data } = pm.response.json();",
                   "  pm.expect(data).to.not.be.empty;",
                   "  data.forEach((item) => pm.expect(item.clientId === pm.collectionVariables.get('clientId')).to.be.true);",
@@ -7578,7 +7789,7 @@
           }
         },
         {
-          "name": "9.35 Filter positions by a type the client does not hold -> 200, empty page",
+          "name": "9.37 Filter positions by a type the client does not hold -> 200, empty page",
           "event": [
             {
               "listen": "test",
@@ -7607,7 +7818,7 @@
           }
         },
         {
-          "name": "9.36 Filter positions reported today -> 200",
+          "name": "9.38 Filter positions reported today -> 200",
           "event": [
             {
               "listen": "prerequest",
@@ -7649,7 +7860,7 @@
           }
         },
         {
-          "name": "9.37 Advisor B filters by advisor A's client -> 200, empty page (no access)",
+          "name": "9.39 Advisor B filters by advisor A's client -> 200, empty page (no access)",
           "event": [
             {
               "listen": "test",
@@ -7678,7 +7889,7 @@
           }
         },
         {
-          "name": "9.38 Filter positions with a date range that ends before it starts -> 400",
+          "name": "9.40 Filter positions with a date range that ends before it starts -> 400",
           "event": [
             {
               "listen": "test",
