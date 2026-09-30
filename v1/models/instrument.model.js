@@ -30,6 +30,8 @@ const instrumentSchema = new mongoose.Schema(
       type: String,
       unique: true,
       sparse: true,
+      trim: true,
+      uppercase: true,
     },
     // Composite FIGI when OpenFIGI has one: the country-level listing, not a single exchange
     figi: {

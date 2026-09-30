@@ -42,6 +42,7 @@ const requestMapping = async (jobs, apiKey) => {
   try {
     const { data } = await axios.post(MAPPING_URL, jobs, {
       headers: apiKey ? { 'X-OPENFIGI-APIKEY': apiKey } : {},
+      timeout: 15_000,
     });
     return data;
   } catch (error) {
@@ -52,7 +53,7 @@ const requestMapping = async (jobs, apiKey) => {
 // Returns Map<isin, listing | null>; null means OpenFIGI has no security for that ISIN
 export const lookupIsinsService = async (isins) => {
   const apiKey = process.env.OPEN_FIGI_API_KEY;
-  const size = JOBS_PER_REQUEST_WITH_KEY;
+  const size = apiKey ? JOBS_PER_REQUEST_WITH_KEY : 10;
 
   const listings = new Map();
   for (const isinChunk of chunk(isins, size)) {

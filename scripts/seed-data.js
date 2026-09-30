@@ -8,12 +8,12 @@ import mongoose from 'mongoose';
 import connectDB from '../v1/config/db.config.js';
 import Bank from '../v1/models/bank.model.js';
 import Client from '../v1/models/client.model.js';
-import Instrument from '../v1/models/instrument.model.js';
 import Issuer from '../v1/models/issuer.model.js';
 import Manager from '../v1/models/manager.model.js';
 import Position from '../v1/models/position.model.js';
 import User, { Advisor } from '../v1/models/user.model.js';
 import { readFile } from 'node:fs/promises';
+import {resolveInstrumentsByIsinService,} from '../v1/services/instruments.services.js';
 
 
 const SEED_ADVISOR_USERNAME = 'demo.advisor';
@@ -24,66 +24,11 @@ const rawPositions = JSON.parse(
   ),
 );//lee el archivo seed-positions-data.json y lo convierte en un objeto de JavaScript
 const SEED_BANK_NAMES = [...new Set(rawPositions.map((position) => position.bank)),];
-const SEED_ISSUER_LEGAL_NAMES =  [
-  'Apple Inc.',
-  'Microsoft Corporation',
-  'Alphabet Inc.',
-  'Amazon.com, Inc.',
-  'NVIDIA Corporation',
-  'Tesla, Inc.',
-  'Berkshire Hathaway Inc.',
-];
-const SEED_INSTRUMENT_ISIN = [ ...new Set(rawPositions.map((position) => position.isin)),];
+const SEED_INSTRUMENT_ISIN = [ ...new Set(rawPositions.map((position) => position.isin.trim().toUpperCase())),];
 
 await connectDB();
 
-const previousAdvisor = await User.findOne({ username: SEED_ADVISOR_USERNAME });
-if (previousAdvisor) {
-  const previousClients = await Client.find({ advisorId: previousAdvisor.id });
-  await Position.deleteMany({ clientId: { $in: previousClients.map((client) => client.id) } });
-  await Client.deleteMany({ advisorId: previousAdvisor.id });
-  await Manager.deleteMany({ advisorId: previousAdvisor.id });
-  await User.deleteOne({ _id: previousAdvisor.id });
-  console.log('Removed previously seeded demo data.');
-}
-await Bank.deleteMany({ name: { $in: SEED_BANK_NAMES } });
-await Issuer.deleteMany({ legalName: { $in: SEED_ISSUER_LEGAL_NAMES } });
-await Instrument.deleteMany({ isin: { $in: SEED_INSTRUMENT_ISIN } });
-
-const hashedPassword = await bcrypt.hash('Demo1234!', Number(process.env.SALT_ROUNDS));
-const advisor = await Advisor.create({
-  username: SEED_ADVISOR_USERNAME,
-  password: hashedPassword,
-  details: {
-    comercialName: 'Straw Hat Wealth Advisors',
-    legalName: 'Straw Hat Crew Wealth Advisors LLC',
-    address: '1200 Brickell Ave, Miami, FL',
-    country: 'USA',
-    document: 'US-EIN-88-1234567',
-    phone: '+1-305-555-0100',
-    contactEmail: 'contact@strawhatcrew.com',
-  },
-  planTier: 'premium',
-});
-console.log(`Created advisor "${advisor.username}".`);
-
-const banks = await Bank.create(
-  SEED_BANK_NAMES.map((name) => ({
-    name,
-    region: 'International',
-    country: 'Unknown',
-    logoURL: `https://picsum.photos/seed/${encodeURIComponent(name)}/200`,
-  })),
-);
-console.log(`Created ${banks.length} banks.`);
-const bankByName = new Map(
-  banks.map((bank) => [
-    bank.name,
-    bank,
-  ]),
-);
-
-const issuers = await Issuer.create([
+const issuerDefinitions  = [
    {
     commercialName: 'Apple',
     legalName: 'Apple Inc.',
@@ -119,7 +64,23 @@ const issuers = await Issuer.create([
     legalName: 'Berkshire Hathaway Inc.',
     country: 'USA',
   },
-]);
+];
+
+const issuers = [];
+
+for (const issuerData of issuerDefinitions) {
+  const issuer = await Issuer.findOneAndUpdate(
+    { legalName: issuerData.legalName },
+    { $setOnInsert: issuerData },
+    {
+      upsert: true,
+      returnDocument: 'after',
+      setDefaultsOnInsert: true,
+    },
+  );
+
+  issuers.push(issuer);
+}
 console.log(`Created ${issuers.length} issuers.`);
 
 const issuerByName = new Map(
@@ -129,83 +90,89 @@ const issuerByName = new Map(
   ]),
 );
 
-
-const instruments = await Instrument.create([
-  {
-    isin: 'US0378331005',
-    type: 'stock',
-    name: 'Apple Inc.',
-    issuerId: issuerByName.get('Apple Inc.').id,
-  },
-  {
-    isin: 'US5949181045',
-    type: 'stock',
-    name: 'Microsoft Corp.',
-    issuerId: issuerByName.get('Microsoft Corporation').id,
-  },
-  {
-    isin: 'US02079K3059',
-    type: 'stock',
-    name: 'Alphabet Inc.',
-    issuerId: issuerByName.get('Alphabet Inc.').id,
-  },
-  {
-    isin: 'US0231351067',
-    type: 'stock',
-    name: 'Amazon.com Inc.',
-    issuerId: issuerByName.get('Amazon.com, Inc.').id,
-  },
-  {
-    isin: 'US67066G1040',
-    type: 'stock',
-    name: 'NVIDIA Corp.',
-    issuerId: issuerByName.get('NVIDIA Corporation').id,
-  },
-  {
-    isin: 'US78462F1030',
-    type: 'fund',
-    name: 'SPDR S&P 500 ETF Trust',
-    fundDetail: {
-      composition: 'equity',
-    },
-  },
-  {
-    isin: 'US4642872265',
-    type: 'fund',
-    name: 'iShares Core U.S. Aggregate Bond ETF',
-    fundDetail: {
-      composition: 'bond',
-    },
-  },
-  {
-    isin: 'US4642872000',
-    type: 'fund',
-    name: 'iShares Core S&P 500 ETF',
-    fundDetail: {
-      composition: 'equity',
-    },
-  },
-  {
-    isin: 'US88160R1014',
-    type: 'stock',
-    name: 'Tesla Inc.',
-    issuerId: issuerByName.get('Tesla, Inc.').id,
-  },
-  {
-    isin: 'US0846707026',
-    type: 'stock',
-    name: 'Berkshire Hathaway Inc. Class B',
-    issuerId: issuerByName.get('Berkshire Hathaway Inc.').id,
-  },
+const seedIssuerNamesByIsin = new Map([
+  ['US0378331005', 'Apple Inc.'],
+  ['US5949181045', 'Microsoft Corporation'],
+  ['US02079K3059', 'Alphabet Inc.'],
+  ['US0231351067', 'Amazon.com, Inc.'],
+  ['US67066G1040', 'NVIDIA Corporation'],
+  ['US88160R1014', 'Tesla, Inc.'],
+  ['US0846707026', 'Berkshire Hathaway Inc.'],
 ]);
-console.log(`Created ${instruments.length} instruments.`);
 
-const instrumentByIsin = new Map(
-  instruments.map((instrument) => [
-    instrument.isin,
-    instrument,
+const issuerIdsByIsin = new Map(
+  [...seedIssuerNamesByIsin].map(([isin, name]) => [
+    isin,
+    issuerByName.get(name)._id,
   ]),
 );
+
+const {
+  instruments: instrumentByIsin,
+  failures,
+} = await resolveInstrumentsByIsinService(
+  SEED_INSTRUMENT_ISIN,
+  issuerIdsByIsin,
+);
+
+if (failures.size > 0) {
+  await mongoose.disconnect();
+
+  throw new Error(
+    `Seed instruments could not be resolved: ${JSON.stringify(
+      [...failures],
+    )}`,
+  );
+}
+
+console.log(
+  `Resolved ${instrumentByIsin.size} instruments from MongoDB / OpenFIGI.`,
+);
+
+const previousAdvisor = await User.findOne({ username: SEED_ADVISOR_USERNAME });
+if (previousAdvisor) {
+  const previousClients = await Client.find({ advisorId: previousAdvisor.id });
+  await Position.deleteMany({ clientId: { $in: previousClients.map((client) => client.id) } });
+  await Client.deleteMany({ advisorId: previousAdvisor.id });
+  await Manager.deleteMany({ advisorId: previousAdvisor.id });
+  await User.deleteOne({ _id: previousAdvisor.id });
+  console.log('Removed previously seeded demo data.');
+}
+await Bank.deleteMany({ name: { $in: SEED_BANK_NAMES } });
+
+const hashedPassword = await bcrypt.hash('Demo1234!', Number(process.env.SALT_ROUNDS));
+const advisor = await Advisor.create({
+  username: SEED_ADVISOR_USERNAME,
+  password: hashedPassword,
+  details: {
+    comercialName: 'Straw Hat Wealth Advisors',
+    legalName: 'Straw Hat Crew Wealth Advisors LLC',
+    address: '1200 Brickell Ave, Miami, FL',
+    country: 'USA',
+    document: 'US-EIN-88-1234567',
+    phone: '+1-305-555-0100',
+    contactEmail: 'contact@strawhatcrew.com',
+  },
+  planTier: 'premium',
+});
+console.log(`Created advisor "${advisor.username}".`);
+
+const banks = await Bank.create(
+  SEED_BANK_NAMES.map((name) => ({
+    name,
+    region: 'International',
+    country: 'Unknown',
+    logoURL: `https://picsum.photos/seed/${encodeURIComponent(name)}/200`,
+  })),
+);
+console.log(`Created ${banks.length} banks.`);
+const bankByName = new Map(
+  banks.map((bank) => [
+    bank.name,
+    bank,
+  ]),
+);
+
 
 const managers = await Manager.create([
   { fullName: 'Monkey D. Luffy', email: 'monkey.d.luffy@strawhatcrew.com', advisorId: advisor.id },
@@ -287,7 +254,7 @@ const positions = rawPositions.map((row) => {
 
   const bank = bankByName.get(row.bank);
 
-  const instrument = instrumentByIsin.get(row.isin);
+  const instrument = instrumentByIsin.get(row.isin.trim().toUpperCase());
 
   if (!client) {
     throw new Error(`Client not found: ${row.nameAccount}`);
