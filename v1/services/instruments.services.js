@@ -23,10 +23,28 @@ export const getInstrumentByIdService = async (id) => {
   return instrument;
 };
 
-export const createInstrumentService = async (instrumentData) => {
-  const instrument = new Instrument(instrumentData);
-  await instrument.save();
-  return instrument;
+export const createInstrumentService = async ({ isin }) => {
+  const { instruments, failures } =
+    await resolveInstrumentsByIsinService([isin]);
+
+  if (failures.size > 0) {
+    throw httpError(
+      {
+        status: 422,
+        message:
+          'The ISIN could not be resolved to a supported instrument.',
+      },
+      [
+        {
+          field: 'isin',
+          isin,
+          reason: failures.get(isin),
+        },
+      ],
+    );
+  }
+
+  return instruments.get(isin);
 };
 
 export const updateInstrumentService = async (id, instrumentData) => {
@@ -38,71 +56,91 @@ export const updateInstrumentService = async (id, instrumentData) => {
   return instrument;
 };
 
-// OpenFIGI's name is the issuer's; a bond also needs its coupon and maturity to tell it apart
-const instrumentName = (listing, type) =>
-  type === 'bond' && listing.securityDescription ?
-    `${listing.name} ${listing.securityDescription}`
-  : listing.name;
-
 // Upsert keyed on the unique isin, so concurrent imports of the same ISIN can't collide
-const createInstrumentFromListing = async ({ isin, listing, type, composition }) => {
+const createInstrumentFromListing = async ({ isin, listing, type, issuerId }) => {
   const instrumentData = {
     isin,
     type,
-    name: instrumentName(listing, type),
-    figi: listing.compositeFIGI ?? listing.figi,
-    ticker: listing.ticker,
-    exchCode: listing.exchCode,
-    securityType: listing.securityType,
-    securityType2: listing.securityType2,
+    name: listing.name,
+    figi: listing.figi,
+    ticker: listing.ticker ?? null,
+    exchCode: listing.exchCode  ?? null,
+    securityType: listing.securityType ?? null,
+    securityType2: listing.securityType2 ?? null,
   };
-  if (type === 'fund') {
-    instrumentData.fundDetail = { composition };
-  } else {
-    instrumentData.issuerId = (await findOrCreateIssuerService(listing.name))._id;
+  if (type === 'stock' || type === 'bond') {
+    instrumentData.issuerId =
+      issuerId ??
+      (await findOrCreateIssuerService(listing.name))._id;
   }
 
   const instrument = await Instrument.findOneAndUpdate(
     { isin },
     { $setOnInsert: instrumentData },
-    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true, runValidators: true, },
   );
   return instrument;
 };
 
 // Resolves ISINs to Instruments. Known ISINs come from the database; the rest are looked up
 // in OpenFIGI and created, along with their Issuer. Nothing is created unless every ISIN
-// resolves. Failure reasons: 'notFound', 'fundCompositionMissing', 'deleted'.
-// fundCompositions (Map<isin, composition>) is only needed for funds seen for the first time.
-export const resolveInstrumentsByIsinService = async (isins, fundCompositions) => {
+export const resolveInstrumentsByIsinService = async (isins, issuerIdsByIsin = new Map(),) => {
+  const uniqueIsins = [
+    ...new Set(
+      isins.map((isin) => isin.trim().toUpperCase()),
+    ),
+  ];
+  
   const instruments = new Map();
   const failures = new Map();
 
-  const known = await Instrument.find({ isin: { $in: isins } });
+  const known = await Instrument.find({ isin: { $in: uniqueIsins  } });
   for (const instrument of known) {
-    if (instrument.isDeleted) failures.set(instrument.isin, 'deleted');
-    else instruments.set(instrument.isin, instrument);
+    if (instrument.isDeleted){failures.set(instrument.isin, 'deleted');} 
+    else if (
+      !['stock', 'bond', 'fund', 'other'].includes(instrument.type)
+    ) {
+      failures.set(instrument.isin, 'unsupportedType');
+    } else {
+      instruments.set(instrument.isin, instrument);
+    }
   }
 
-  const unknownIsins = isins.filter((isin) => !instruments.has(isin) && !failures.has(isin));
+  const unknownIsins = uniqueIsins.filter((isin) => !instruments.has(isin) && !failures.has(isin));
   if (unknownIsins.length === 0) return { instruments, failures };
 
   const listings = await lookupIsinsService(unknownIsins);
   const pending = [];
   for (const isin of unknownIsins) {
     const listing = listings.get(isin);
-    const type = listing && normalizeSecurityType(listing);
-    const composition = fundCompositions.get(isin);
 
-    if (!listing) failures.set(isin, 'notFound');
-    else if (type === 'fund' && !composition) failures.set(isin, 'fundCompositionMissing');
-    else pending.push({ isin, listing, type, composition });
+    if (!listing) {failures.set(isin, 'notFound');
+    } else if (!listing.name || !listing.figi) {
+    failures.set(isin, 'incompleteData');
+    } else {
+      pending.push({
+        isin,
+        listing,
+        type :normalizeSecurityType(listing),
+        issuerId: issuerIdsByIsin.get(isin),
+      });
+    }
   }
-  if (failures.size > 0) return { instruments, failures };
+   if (failures.size > 0) {
+    return { instruments, failures };
+  }
 
   for (const instrumentData of pending) {
-    instruments.set(instrumentData.isin, await createInstrumentFromListing(instrumentData));
+    const instrument =
+      await createInstrumentFromListing(instrumentData);
+
+    if (instrument.isDeleted) {
+      failures.set(instrumentData.isin, 'deleted');
+    } else {
+      instruments.set(instrumentData.isin, instrument);
+    }
   }
+
   return { instruments, failures };
 };
 

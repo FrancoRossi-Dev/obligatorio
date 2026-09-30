@@ -58,7 +58,8 @@ const findReferenceErrors = (positionsData, clients, user) => {
 // Keyed by the failure reasons resolveInstrumentsByIsinService reports
 const ISIN_MESSAGES = {
   notFound: 'No security is registered under this ISIN.',
-  fundCompositionMissing: 'Fund composition is required the first time a fund is imported.',
+  unsupportedType:'The security is not a supported stock, bond, fund or other.',
+  incompleteData: 'OpenFIGI did not return the instrument name or FIGI.',
   deleted: 'The instrument for this ISIN has been removed from Abakus.',
 };
 
@@ -69,12 +70,9 @@ const resolveIsins = async (positionsData) => {
   if (importedPositions.length === 0) return { positions: positionsData, errors: [] };
 
   const isins = [...new Set(importedPositions.map((position) => position.isin))];
-  const fundCompositions = new Map(
-    importedPositions
-      .filter((position) => position.fundComposition)
-      .map((position) => [position.isin, position.fundComposition]),
-  );
-  const { instruments, failures } = await resolveInstrumentsByIsinService(isins, fundCompositions);
+  
+  const { instruments, failures } =
+    await resolveInstrumentsByIsinService(isins);
 
   const errors = [];
   positionsData.forEach((position, index) => {
@@ -87,7 +85,6 @@ const resolveIsins = async (positionsData) => {
   const positions = positionsData.map((position) => {
     if (!position.isin) return position;
     const { isin, ...stored } = position;
-    delete stored.fundComposition;
     const instrument = instruments.get(isin);
     return { ...stored, instrumentId: instrument._id, issuerId: instrument.issuerId };
   });

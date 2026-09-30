@@ -26,43 +26,18 @@ const marketDataKeys = {
 };
 
 export const createInstrumentSchema = Joi.object({
-  name: Joi.string().trim().max(100).required().messages({
-    "string.base": "Instrument name must be text.",
-    "string.empty": "Instrument name is required.",
-    "string.max": "Instrument name must be at most {#limit} characters long.",
-    "any.required": "Instrument name is required.",
+ isin: Joi.string()
+    .trim()
+    .uppercase()
+    .pattern(/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/)
+    .required()
+    .messages({
+      'string.base': 'ISIN must be text.',
+      'string.empty': 'ISIN is required.',
+      'string.pattern.base':
+        'ISIN must be a 12-character code such as US0378331005.',
+      'any.required': 'ISIN is required.',
     }),
-    type: Joi.string().valid(...INSTRUMENT_TYPES).required().messages({
-    "any.only": INVALID_TYPE_MESSAGE,
-    "any.required": "Instrument type is required.",
-    }),
-    issuerId: Joi.string().when("type", {
-    // required(): without it the condition also matches when type is not sent (e.g. on updates)
-    is: Joi.valid("stock", "bond").required(),
-    then: Joi.string().required().messages({
-        "string.empty": "Issuer ID is required for stock and bond instruments.",
-        "any.required": "Issuer ID is required for stock and bond instruments.",
-    }),
-    otherwise: Joi.string().optional(), 
-}),
-    fundDetail: Joi.object({
-    composition: Joi.string().valid("equity", "bond", "balanced", "alternative").required().messages({
-        "any.only": "Fund composition must be one of 'equity', 'bond', 'balanced', or 'alternative'.",
-        "any.required": "Fund composition is required for fund instruments.",
-    }),
-    }).when("type", {
-    is: "fund",
-    then: Joi.object({
-        composition: Joi.string().valid("equity", "bond", "balanced", "alternative").required().messages({
-            "any.only": "Fund composition must be one of 'equity', 'bond', 'balanced', or 'alternative'.",
-            "any.required": "Fund composition is required for fund instruments.",
-        }),
-    }),
-    otherwise: Joi.forbidden().messages({
-        "any.unknown": "Fund detail is only allowed for fund instruments.",
-    }),
-}),
-    ...marketDataKeys,
 });
 
 export const updateInstrumentSchema = Joi.object({
@@ -83,23 +58,7 @@ export const updateInstrumentSchema = Joi.object({
     }),
     otherwise: Joi.string().optional(),
 }),
-    fundDetail: Joi.object({
-    composition: Joi.string().valid("equity", "bond", "balanced", "alternative").required().messages({
-        "any.only": "Fund composition must be one of 'equity', 'bond', 'balanced', or 'alternative'.",
-        "any.required": "Fund composition is required for fund instruments.",
-    }),
-    }).when("type", {
-    is: "fund",
-    then: Joi.object({
-        composition: Joi.string().valid("equity", "bond", "balanced", "alternative").required().messages({
-            "any.only": "Fund composition must be one of 'equity', 'bond', 'balanced', or 'alternative'.",
-            "any.required": "Fund composition is required for fund instruments.",
-        }),
-    }),
-    otherwise: Joi.forbidden().messages({
-        "any.unknown": "Fund detail is only allowed for fund instruments.",
-    }),
-}),
+  
     ...marketDataKeys,
 })
   .min(1)

@@ -45,11 +45,6 @@ export const createPositionSchema = Joi.object({
     "string.pattern.base": "ISIN must be a 12-character code such as US0378331005.",
   }),
 
-  // Only read when an ISIN resolves to a fund Abakus has not registered yet
-  fundComposition: Joi.string().valid("equity", "bond", "balanced", "alternative").messages({
-    "any.only": "Fund composition must be one of 'equity', 'bond', 'balanced', or 'alternative'.",
-  }),
-
   quantity: Joi.number().positive().required().messages({
     "number.base": "Quantity must be a number.",
     "number.positive": "Quantity must be a positive number.",
@@ -89,11 +84,9 @@ export const createPositionSchema = Joi.object({
   }),
 })
   .xor("instrumentId", "isin")
-  .with("fundComposition", "isin")
   .messages({
     "object.missing": "Each position must identify its instrument by either an instrument ID or an ISIN.",
     "object.xor": "Each position must identify its instrument by an instrument ID or an ISIN, not both.",
-    "object.with": "Fund composition can only be provided alongside an ISIN.",
   });
 
 // Positions are always created in bulk: the body is a list with at least one position

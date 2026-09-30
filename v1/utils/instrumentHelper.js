@@ -46,13 +46,35 @@ const FUND_SECURITY_TYPES = [
   'ETP',
 ];
 
-const BOND_MARKET_SECTORS = ['Corp', 'Govt', 'Muni'];
-
-export const normalizeSecurityType = ({ securityType, marketSector }) => {
+const classify = (securityType) => {
   if (STOCK_SECURITY_TYPES.includes(securityType)) return 'stock';
   if (FUND_SECURITY_TYPES.includes(securityType)) return 'fund';
-  if (BOND_SECURITY_TYPES.includes(securityType) || BOND_MARKET_SECTORS.includes(marketSector)) {
+  if (BOND_SECURITY_TYPES.includes(securityType)) return 'bond';
+
+  return null;
+};
+
+export const normalizeSecurityType = ({
+  securityType,
+  securityType2,
+}) => {
+  // first try to classify by securityType
+  // after that, try securityType2
+  const type = classify(securityType) ?? classify(securityType2);
+
+  if (type) return type;
+
+  if (['ETF', 'Fund'].includes(securityType2)) return 'fund';
+
+  if (
+    ['Preferred Stock', 'Depositary Receipt'].includes(securityType2)
+  ) {
+    return 'stock';
+  }
+
+  if (['Note', 'Bill', 'Govt', 'Muni'].includes(securityType2)) {
     return 'bond';
   }
+
   return 'other';
 };
