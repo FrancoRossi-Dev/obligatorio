@@ -19,7 +19,9 @@ const CLIENT_MESSAGES = {
 // Advisors only list their own clients; admins list every client
 export const getClients = async (req, res) => {
   const { id, role } = req.decoded;
-  const clients = await getClientsService(role === 'advisor' ? { advisorId: id } : {}, req.validatedQuery);
+  const { page, limit, ...filters } = req.validatedQuery;
+  const scope = role === 'advisor' ? { advisorId: id } : {};
+  const clients = await getClientsService(scope, filters, { page, limit });
   res.status(200).json(clients);
 };
 

@@ -1,4 +1,6 @@
 import Joi from 'joi';
+import { paginationQuerySchema } from './pagination.validators.js';
+import { filterText } from './filter.validators.js';
 
 // Lowercased so ids compare equal to the ones Mongoose returns
 export const bankParamsSchema = Joi.object({
@@ -53,3 +55,9 @@ export const updateBankSchema = Joi.object({
   .messages({
     'object.min': 'At least one field must be provided for update.',
   });
+
+// GET /v1/bank filters
+export const bankQuerySchema = paginationQuerySchema.keys({
+  country: filterText('Country'),
+  region: filterText('Region'),
+});

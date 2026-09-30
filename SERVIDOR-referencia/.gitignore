@@ -1,0 +1,21 @@
+# Dependencias
+node_modules/
+
+# Archivos de logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Variables de entorno
+.env
+
+# Cobertura de tests
+coverage/
+
+# Carpeta de compilación / build
+dist/
+build/

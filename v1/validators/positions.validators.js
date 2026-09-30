@@ -1,4 +1,7 @@
 import Joi from "joi";
+import { paginationQuerySchema } from "./pagination.validators.js";
+import { filterId, filterText } from "./filter.validators.js";
+import { INSTRUMENT_TYPES } from "../models/instrument.model.js";
 
 // Lowercased so ids compare equal to the ones Mongoose returns
 export const positionParamsSchema = Joi.object({
@@ -159,3 +162,24 @@ export const updatePositionSchema = Joi.object({
   .messages({
     "object.min": "At least one field must be provided for update.",
   });
+
+
+// GET /v1/position filters; from and to bound dateOfReport, both inclusive
+export const positionQuerySchema = paginationQuerySchema.keys({
+  type: Joi.string().valid(...INSTRUMENT_TYPES).messages({
+    "any.only": `Instrument type must be one of: ${INSTRUMENT_TYPES.join(", ")}.`,
+  }),
+  clientId: filterId("Client"),
+  instrumentId: filterId("Instrument"),
+  currency: filterText("Currency"),
+  from: Joi.date().iso().messages({
+    "date.base": "From must be a date.",
+    "date.format": "From must be an ISO date (YYYY-MM-DD).",
+  }),
+  // Only compared with from when from is sent; on its own, to is just an upper bound
+  to: Joi.date().iso().when("from", { is: Joi.exist(), then: Joi.date().min(Joi.ref("from")) }).messages({
+    "date.base": "To must be a date.",
+    "date.format": "To must be an ISO date (YYYY-MM-DD).",
+    "date.min": "To must be on or after from.",
+  }),
+});

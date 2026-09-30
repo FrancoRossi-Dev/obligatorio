@@ -10,16 +10,16 @@ import {
 } from '../controllers/instrument.controller.js';
 import {
   createInstrumentSchema,
+  instrumentQuerySchema,
   updateInstrumentSchema,
 } from '../validators/instrument.validators.js';
-import { paginationQuerySchema } from '../validators/pagination.validators.js';
 
 const router = express.Router({ mergeParams: true });
 
-const paginated = validateQueryMiddleware(paginationQuerySchema);
+const listQuery = validateQueryMiddleware(instrumentQuerySchema);
 
 router
-  .get('/', paginated, getInstruments)
+  .get('/', listQuery, getInstruments)
   .post('/', validateBodyMiddleware(createInstrumentSchema), createInstrument);
 
 router

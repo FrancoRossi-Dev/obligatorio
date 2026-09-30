@@ -14,6 +14,15 @@ Todas las rutas protegidas requieren `Authorization: Bearer <JWT>`. Sin token o 
 
 Listados paginados aceptan `?page=&limit=` y devuelven `{ data, total, page, limit, pages }`, del más nuevo al más viejo. Por defecto `page=1` y `limit=10`; `limit` admite hasta `100`. Parámetros de paginación inválidos o desconocidos → **400**. Un listado vacío responde **200** con `data: []`.
 
+Filtros de los listados (query string, combinables entre sí y con la paginación; todos se cumplen a la vez). Los textos exactos no distinguen mayúsculas; `q` busca "contiene" y se escapa, nunca se interpreta como regex. Un filtro inválido o desconocido → **400**; sin coincidencias → **200** con `data: []`.
+
+| Listado | Filtros |
+| --- | --- |
+| `GET /v1/position` | `type` (`stock`\|`bond`\|`fund`, el del instrumento), `clientId`, `instrumentId`, `currency`, `from` y `to` (fechas ISO sobre `dateOfReport`, ambas inclusive; `to` ≥ `from`). Un advisor solo ve posiciones de sus clientes aunque pida otro `clientId` |
+| `GET /v1/client` | `q` (nombre comercial o razón social), `country`, `managerId`, `bankId` (tiene una cuenta activa en ese banco), `region` (tiene una cuenta activa en un banco de esa región). `bankId` y `region` juntos se cumplen sobre la misma cuenta |
+| `GET /v1/instrument` | `type`, `q` (nombre o ticker), `isin` |
+| `GET /v1/bank` | `country`, `region` |
+
 Formato de error estándar sugerido:
 
 ```json

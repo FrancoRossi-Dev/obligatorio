@@ -14,7 +14,8 @@ const INSTRUMENT_MESSAGES = {
 };
 
 export const getInstruments = async (req, res) => {
-  const instruments = await getInstrumentsService(req.validatedQuery);
+  const { page, limit, ...filters } = req.validatedQuery;
+  const instruments = await getInstrumentsService(filters, { page, limit });
   res.status(200).json(instruments);
 };
 

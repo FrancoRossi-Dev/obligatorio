@@ -13,17 +13,17 @@ import {
 import {
   createPositionsSchema,
   positionParamsSchema,
+  positionQuerySchema,
   updatePositionSchema,
 } from '../validators/positions.validators.js';
-import { paginationQuerySchema } from '../validators/pagination.validators.js';
 
 const router = express.Router({ mergeParams: true });
 
-const paginated = validateQueryMiddleware(paginationQuerySchema);
+const listQuery = validateQueryMiddleware(positionQuerySchema);
 
 const ownedPosition = [validateParamsMiddleware(positionParamsSchema), ownedPositionMiddleware];
 
-router.get('/', paginated, getPositions).post('/', validateBodyMiddleware(createPositionsSchema), createPositions);
+router.get('/', listQuery, getPositions).post('/', validateBodyMiddleware(createPositionsSchema), createPositions);
 
 router
   .get('/:positionId', ownedPosition, getPositionById)

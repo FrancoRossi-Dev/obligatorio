@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 // fundDetail only applies (and is only required) when type === 'fund'.
 // issuerId only applies (and is only required) when type is 'stock' or 'bond'.
 
-const INSTRUMENT_TYPES = ['stock', 'bond', 'fund'];
+export const INSTRUMENT_TYPES = ['stock', 'bond', 'fund'];
 const SECURITY_TYPE = [];
 
 const instrumentSchema = new mongoose.Schema(

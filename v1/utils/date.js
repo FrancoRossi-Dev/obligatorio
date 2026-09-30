@@ -7,3 +7,9 @@ export const daysAgo = (days) => {
   date.setUTCDate(date.getUTCDate() - days);
   return date;
 };
+
+export const nextDay = (date) => {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next;
+};

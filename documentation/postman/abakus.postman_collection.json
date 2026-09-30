@@ -177,6 +177,10 @@
     {
       "key": "client1AccountsRepeated",
       "value": ""
+    },
+    {
+      "key": "today",
+      "value": ""
     }
   ],
   "item": [
@@ -2104,6 +2108,96 @@
             ],
             "url": "{{prod_base_url}}/v1/bank?limit=101"
           }
+        },
+        {
+          "name": "3.24 Filter banks by country and region, any letter case -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Every result is in that country and region', () => {",
+                  "  const { data } = pm.response.json();",
+                  "  pm.expect(data).to.not.be.empty;",
+                  "  data.forEach((item) => pm.expect(item.country.toLowerCase() === 'uruguay' && item.region.toLowerCase() === 'south america').to.be.true);",
+                  "});",
+                  "pm.test('Includes the test bank', () => {",
+                  "  const ids = pm.response.json().data.map((item) => item._id);",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('bankId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank?country=URUGUAY&region=south%20america&limit=100"
+          }
+        },
+        {
+          "name": "3.25 Filter banks by a region no bank has -> 200, empty page",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns an empty page', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array').that.is.empty;",
+                  "  pm.expect(body.total).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank?region=Nowhere%20{{run_id}}"
+          }
+        },
+        {
+          "name": "3.26 Filter banks by an unsupported field -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Reports the invalid name', () => {",
+                  "  const { details } = pm.response.json();",
+                  "  pm.expect(details).to.deep.include({ field: 'name', message: \"name is not a supported query parameter.\" });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/bank?name=Banco"
+          }
         }
       ]
     },
@@ -3311,6 +3405,92 @@
               }
             ],
             "url": "{{prod_base_url}}/v1/instrument/000000000000000000000000"
+          }
+        },
+        {
+          "name": "5.17 Filter instruments by type and name -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Every result is a stock named after this run', () => {",
+                  "  const { data } = pm.response.json();",
+                  "  pm.expect(data).to.not.be.empty;",
+                  "  data.forEach((item) => pm.expect(item.type === 'stock' && item.name.includes(pm.collectionVariables.get('run_id'))).to.be.true);",
+                  "});",
+                  "pm.test('Includes the test stock', () => {",
+                  "  const ids = pm.response.json().data.map((item) => item._id);",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('instrumentId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/instrument?type=stock&q={{run_id}}&limit=100"
+          }
+        },
+        {
+          "name": "5.18 Search instruments with regex characters -> 200 (matched as plain text)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns a page', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/instrument?q=%28.*"
+          }
+        },
+        {
+          "name": "5.19 Filter instruments by an unsupported type -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Reports the invalid type', () => {",
+                  "  const { details } = pm.response.json();",
+                  "  pm.expect(details).to.deep.include({ field: 'type', message: \"Instrument type must be one of: stock, bond, fund.\" });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/instrument?type=crypto"
           }
         }
       ]
@@ -5331,6 +5511,128 @@
               }
             }
           }
+        },
+        {
+          "name": "7.32 Search clients by part of the name, any letter case -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Includes client 1', () => {",
+                  "  const ids = pm.response.json().data.map((item) => item._id);",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('clientId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client?q=CLIENT%201%20RENAMED%20{{run_id}}"
+          }
+        },
+        {
+          "name": "7.33 Filter clients by country, bank and bank region -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Every result is in Paraguay with an active account in the bank', () => {",
+                  "  const { data } = pm.response.json();",
+                  "  pm.expect(data).to.not.be.empty;",
+                  "  data.forEach((item) => pm.expect(item.clientDetails.country.toLowerCase() === 'paraguay' && item.bankAccounts.some((account) => !account.isDeleted && account.bankId === pm.collectionVariables.get('bankId'))).to.be.true);",
+                  "});",
+                  "pm.test('Includes client 1', () => {",
+                  "  const ids = pm.response.json().data.map((item) => item._id);",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('clientId'));",
+                  "});",
+                  "pm.test(\"Leaves out advisor B's client\", () => {",
+                  "  const ids = pm.response.json().data.map((item) => item._id);",
+                  "  pm.expect(ids).to.not.include(pm.collectionVariables.get('clientBId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client?country=paraguay&bankId={{bankId}}&region=South%20America&limit=100"
+          }
+        },
+        {
+          "name": "7.34 Filter clients by a region no bank has -> 200, empty page",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns an empty page', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array').that.is.empty;",
+                  "  pm.expect(body.total).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client?region=Nowhere%20{{run_id}}"
+          }
+        },
+        {
+          "name": "7.35 Filter clients by a malformed manager id -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Reports the invalid managerId', () => {",
+                  "  const { details } = pm.response.json();",
+                  "  pm.expect(details).to.deep.include({ field: 'managerId', message: \"Manager id is not valid.\" });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/client?managerId=not-an-id"
+          }
         }
       ]
     },
@@ -7240,6 +7542,167 @@
               }
             ],
             "url": "{{prod_base_url}}/v1/position/{{positionBId}}"
+          }
+        },
+        {
+          "name": "9.34 Filter positions by client and instrument type -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Every result is client 1's', () => {",
+                  "  const { data } = pm.response.json();",
+                  "  pm.expect(data).to.not.be.empty;",
+                  "  data.forEach((item) => pm.expect(item.clientId === pm.collectionVariables.get('clientId')).to.be.true);",
+                  "});",
+                  "pm.test('Includes the position created by instrument id', () => {",
+                  "  const ids = pm.response.json().data.map((item) => item._id);",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('positionId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/position?clientId={{clientId}}&type=stock&limit=100"
+          }
+        },
+        {
+          "name": "9.35 Filter positions by a type the client does not hold -> 200, empty page",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns an empty page', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array').that.is.empty;",
+                  "  pm.expect(body.total).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/position?clientId={{clientId}}&type=bond"
+          }
+        },
+        {
+          "name": "9.36 Filter positions reported today -> 200",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('today', new Date().toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Every result was reported today', () => {",
+                  "  const { data } = pm.response.json();",
+                  "  pm.expect(data).to.not.be.empty;",
+                  "  data.forEach((item) => pm.expect(item.dateOfReport.startsWith(pm.collectionVariables.get('today'))).to.be.true);",
+                  "});",
+                  "pm.test('Includes the position created by instrument id', () => {",
+                  "  const ids = pm.response.json().data.map((item) => item._id);",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('positionId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/position?clientId={{clientId}}&from={{today}}&to={{today}}&limit=100"
+          }
+        },
+        {
+          "name": "9.37 Advisor B filters by advisor A's client -> 200, empty page (no access)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns an empty page', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array').that.is.empty;",
+                  "  pm.expect(body.total).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_b_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/position?clientId={{clientId}}"
+          }
+        },
+        {
+          "name": "9.38 Filter positions with a date range that ends before it starts -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Reports the invalid to', () => {",
+                  "  const { details } = pm.response.json();",
+                  "  pm.expect(details).to.deep.include({ field: 'to', message: \"To must be on or after from.\" });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisor_token}}"
+              }
+            ],
+            "url": "{{prod_base_url}}/v1/position?from=2026-02-01&to=2026-01-01"
           }
         }
       ]

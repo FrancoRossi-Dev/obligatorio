@@ -1,9 +1,25 @@
 import Position from '../models/position.model.js';
+import Instrument from '../models/instrument.model.js';
 import { getPositionValue, round } from '../utils/math.js';
 import { paginate } from '../utils/pagination.js';
+import { addCondition, equalsIgnoreCase } from '../utils/filters.js';
+import { nextDay } from '../utils/date.js';
 
-export const getPositionsService = async (filter, pagination) =>
-  paginate(Position, { ...filter, isDeleted: false }, pagination);
+// A position has no type of its own: it takes its instrument's, so type filters by those instruments.
+// to covers its whole day, so the range stops before the next one
+const buildPositionFilter = async (filter, { type, clientId, instrumentId, currency, from, to }) => {
+  if (clientId) addCondition(filter, 'clientId', { $eq: clientId });
+  if (instrumentId) addCondition(filter, 'instrumentId', { $eq: instrumentId });
+  if (type) addCondition(filter, 'instrumentId', { $in: await Instrument.distinct('_id', { type }) });
+  if (currency) filter.currency = equalsIgnoreCase(currency);
+  if (from) addCondition(filter, 'dateOfReport', { $gte: from });
+  if (to) addCondition(filter, 'dateOfReport', { $lt: nextDay(to) });
+  return filter;
+};
+
+// scope limits an advisor to its own clients; filters come from the query string
+export const getPositionsService = async (scope, filters, pagination) =>
+  paginate(Position, await buildPositionFilter({ ...scope, isDeleted: false }, filters), pagination);
 
 export const getPositionByIdService = async (id) => {
   const position = await Position.findOne({ _id: id, isDeleted: false });
