@@ -206,7 +206,7 @@ equivalencia:
 | Banco (categoría) | `Bank` | catálogo: lo lee cualquier usuario, solo `admin` lo crea, modifica o borra (403 para `advisor`) |
 | Cuenta bancaria | `Client.bankAccounts[]` (subdocumento embebido) | no es colección propia — ver limitación abajo |
 | Emisor de un instrumento | `Issuer` | acción/corporación o gobierno; distinto de `Client`. Mismo criterio que `Bank`: escritura solo `admin` |
-| Instrumento financiero | `Instrument` | tipo único con discriminación por `type` (`stock`\|`bond`\|`fund`); identificado por `isin` cuando se resuelve vía OpenFIGI |
+| Instrumento financiero | `Instrument` | tipo único con discriminación por `type` (`stock`\|`bond`\|`fund`\|`other`); identificado por `isin` cuando se resuelve vía OpenFIGI. En ese caso guarda los datos de referencia de OpenFIGI (`figi`, `ticker`, `exchCode`, `securityType`, `securityType2`) y `type` se deriva de `securityType` con `normalizeSecurityType`. Esos campos son opcionales: se pueden completar después del alta |
 | Posición | `Position` | tenencia de un `Instrument` en una `bankAccount` de un `Client`, con cantidad y precios |
 | Plan `plus` | `Advisor.planTier: "premium"` | la letra dice `plus`, el modelo usa `premium`. `base` admite hasta 4 clientes y 4 cuentas activas (403 al superarlo) |
 
@@ -266,10 +266,14 @@ erDiagram
     INSTRUMENT ||--o{ POSITION : "instrumentId"
     INSTRUMENT {
         objectId issuerId FK "solo type=stock|bond"
-        string type "stock | bond | fund"
+        string type "stock | bond | fund | other"
         string name
         string isin UK "sparse"
+        string figi "OpenFIGI, composite"
         string ticker
+        string exchCode
+        string securityType "OpenFIGI, tal cual"
+        string securityType2
         object fundDetail "solo type=fund"
         boolean isDeleted
     }

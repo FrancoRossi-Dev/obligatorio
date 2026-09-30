@@ -13,17 +13,29 @@ const chunk = (items, size) => {
   return chunks;
 };
 
-// An ISIN maps to one listing per exchange; they share issuer and asset class, so keep the
-// country-level composite listing when there is one
-const pickListing = (listings) =>
-  listings.find((listing) => listing.figi === listing.compositeFIGI) ?? listings[0];
+// OpenFIGI composite exchange code of the home market, keyed by the ISIN's country prefix.
+// Not always the ISO code (Canada is CN, Germany GR); only codes confirmed against OpenFIGI
+const HOME_COMPOSITE_BY_ISIN_COUNTRY = {
+  US: 'US',
+  CA: 'CN',
+  DE: 'GR',
+  CH: 'SW',
+  ES: 'SM',
+  JP: 'JP',
+  BR: 'BZ',
+  AR: 'AR',
+  MX: 'MM',
+};
 
-// Maps an OpenFIGI listing to an Instrument type; null when Abakus doesn't support that asset
-export const toInstrumentType = ({ marketSector, securityType2 }) => {
-  if (securityType2 === 'Common Stock' || securityType2 === 'Depositary Receipt') return 'stock';
-  if (securityType2 === 'Mutual Fund') return 'fund';
-  if (['Corp', 'Govt', 'Muni'].includes(marketSector)) return 'bond';
-  return null;
+// An ISIN maps to one listing per exchange and one composite per country; they share issuer
+// and asset class, but FIGI, exchange and ticker differ. Keep the home-market composite, else
+// the first composite OpenFIGI returns, else any listing
+const pickListing = (isin, listings) => {
+  const composites = listings.filter((listing) => listing.figi === listing.compositeFIGI);
+  const homeExchCode = HOME_COMPOSITE_BY_ISIN_COUNTRY[isin.slice(0, 2)];
+  return (
+    composites.find((listing) => listing.exchCode === homeExchCode) ?? composites[0] ?? listings[0]
+  );
 };
 
 const requestMapping = async (jobs, apiKey) => {
@@ -48,7 +60,8 @@ export const lookupIsinsService = async (isins) => {
     const results = await requestMapping(jobs, apiKey);
 
     results.forEach((result, index) => {
-      listings.set(isinChunk[index], result.data?.length ? pickListing(result.data) : null);
+      const isin = isinChunk[index];
+      listings.set(isin, result.data?.length ? pickListing(isin, result.data) : null);
     });
   }
   return listings;

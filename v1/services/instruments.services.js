@@ -2,7 +2,8 @@ import Instrument from '../models/instrument.model.js';
 import Position from '../models/position.model.js';
 import { ERRORS, httpError } from '../utils/http-error.js';
 import { findOrCreateIssuerService } from './issuer.services.js';
-import { lookupIsinsService, toInstrumentType } from './openfigi.services.js';
+import { lookupIsinsService } from './openfigi.services.js';
+import { normalizeSecurityType } from '../utils/instrumentHelper.js';
 import { paginate } from '../utils/pagination.js';
 import { containsText } from '../utils/filters.js';
 
@@ -51,6 +52,9 @@ const createInstrumentFromListing = async ({ isin, listing, type, composition })
     name: instrumentName(listing, type),
     figi: listing.compositeFIGI ?? listing.figi,
     ticker: listing.ticker,
+    exchCode: listing.exchCode,
+    securityType: listing.securityType,
+    securityType2: listing.securityType2,
   };
   if (type === 'fund') {
     instrumentData.fundDetail = { composition };
@@ -68,7 +72,7 @@ const createInstrumentFromListing = async ({ isin, listing, type, composition })
 
 // Resolves ISINs to Instruments. Known ISINs come from the database; the rest are looked up
 // in OpenFIGI and created, along with their Issuer. Nothing is created unless every ISIN
-// resolves. Failure reasons: 'notFound', 'unsupported', 'fundCompositionMissing', 'deleted'.
+// resolves. Failure reasons: 'notFound', 'fundCompositionMissing', 'deleted'.
 // fundCompositions (Map<isin, composition>) is only needed for funds seen for the first time.
 export const resolveInstrumentsByIsinService = async (isins, fundCompositions) => {
   const instruments = new Map();
@@ -87,11 +91,10 @@ export const resolveInstrumentsByIsinService = async (isins, fundCompositions) =
   const pending = [];
   for (const isin of unknownIsins) {
     const listing = listings.get(isin);
-    const type = listing && toInstrumentType(listing);
+    const type = listing && normalizeSecurityType(listing);
     const composition = fundCompositions.get(isin);
 
     if (!listing) failures.set(isin, 'notFound');
-    else if (!type) failures.set(isin, 'unsupported');
     else if (type === 'fund' && !composition) failures.set(isin, 'fundCompositionMissing');
     else pending.push({ isin, listing, type, composition });
   }
