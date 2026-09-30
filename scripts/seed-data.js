@@ -219,6 +219,7 @@ for (const clientName of clientNames) {
       commercialName: clientName,
       legalName: clientName,
       country: 'Uruguay',
+      logoURL: clientRows[0].clientLogoURL,
     },
 
     // Round-robin, so every run gives each manager the same clients
