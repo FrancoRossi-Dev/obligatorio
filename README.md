@@ -17,7 +17,7 @@ para el porqué de cada decisión.
 
 | | |
 | --- | --- |
-| API publicada | Vercel — _completar URL_ (también en `prod_base_url` de la colección) |
+| API publicada | [Abakus en Vercel](https://abakus-gamma.vercel.app) — base de endpoints: `/v1` |
 | Colección de Postman | [`documentation/postman/abakus.postman_collection.json`](documentation/postman/abakus.postman_collection.json) |
 | Endpoints | [`documentation/endpoints.md`](documentation/endpoints.md) |
 | Requerimientos | [`documentation/requerimientos-api.md`](documentation/requerimientos-api.md) |
@@ -26,7 +26,7 @@ para el porqué de cada decisión.
 
 ## Estado del proyecto
 
-En desarrollo, a pocos días de la entrega. Todos los recursos del dominio tienen el
+Todos los recursos del dominio tienen el
 flujo completo `route → middleware(s) → controller → service → model`.
 Ver el detalle funcional y los criterios de aceptación en
 [`documentation/requerimientos-api.md`](documentation/requerimientos-api.md),
@@ -53,14 +53,14 @@ y el modelo de datos actual (con diagramas) en [Modelo de dominio](#modelo-de-do
 | Subida de imágenes a Cloudinary | ✅ (logo del banco y del cliente) |
 | Scripts de seed (admins y datos de demo) | ✅ (ver [Scripts](#scripts)) |
 | Deploy en Vercel | ✅ |
-| Colección y tests de Postman | 🟨 (en curso: faltan requests de filtros y un test por status code) |
+| Colección y tests de Postman | 🟨 Incluye filtros y casos de error; ver ejecución y limitaciones en [Testing](#testing) |
 | Conversión multi-moneda (API de FX) | ⬜ fuera del alcance de esta entrega |
 
 ---
 
 ## Stack tecnológico
 
-- **Runtime:** Node.js 20 LTS (ES Modules)
+- **Runtime:** Node.js (ES Modules; versiones compatibles abajo)
 - **Framework:** Express 5
 - **Base de datos:** MongoDB + Mongoose
 - **Autenticación:** JWT (`jsonwebtoken`) + hashing con `bcryptjs`
@@ -76,7 +76,7 @@ y el modelo de datos actual (con diagramas) en [Modelo de dominio](#modelo-de-do
 
 ## Requisitos previos
 
-- Node.js ≥ 20
+- Node.js `^20.19.0`, `^22.13.0` o `≥24`, según las dependencias fijadas en `package-lock.json` (incluido ESLint)
 - npm ≥ 10
 - Una instancia de MongoDB (local o MongoDB Atlas)
 
@@ -91,17 +91,20 @@ npm install
 # 2. Crear el archivo .env en la raíz
 #   con las variables de la tabla más abajo
 
-# 3. (opcional) Cargar admins y datos de demo — ver "Scripts"
+# 3. (opcional) Crear un admin, con ADMIN_SEED_PASSWORD definido en .env
+node scripts/seed-admins.js admin
+
+# 4. (opcional) Cargar datos de demo — ver "Scripts"
 node scripts/seed-data.js
 
-# 4. Levantar en modo desarrollo (recarga con nodemon)
+# 5. Levantar en modo desarrollo (recarga con nodemon)
 npm run dev
 
-# 4'. o en modo producción
+# Alternativa: iniciar sin recarga automática
 npm start
 ```
 
-La API queda disponible en `http://localhost:3000/v1`.
+La API queda disponible en `http://localhost:3000/v1`, salvo que se configure otro `PORT`.
 
 ---
 
@@ -112,7 +115,7 @@ La API queda disponible en `http://localhost:3000/v1`.
 | `npm run dev` | Levanta el servidor con `nodemon` |
 | `npm start` | Levanta el servidor con `node` |
 | `npm run lint` / `npm run lint:fix` | Corre ESLint (y aplica correcciones automáticas) |
-| `ADMIN_SEED_PASSWORD=<pwd> node scripts/seed-admins.js <user> [<user> ...]` | Crea usuarios `admin` (no pueden auto-registrarse, RF11). Omite los usernames que ya existen |
+| `node scripts/seed-admins.js <user> [<user> ...]` | Crea usuarios `admin` usando `ADMIN_SEED_PASSWORD` de `.env` (no pueden auto-registrarse, RF11). Omite los usernames que ya existen |
 | `node scripts/seed-data.js` | Carga un advisor de demo (`demo.advisor`), bancos, emisores, instrumentos, clientes, managers y posiciones (estas desde `scripts/seed-positions-data.json`). Idempotente: borra los datos de demo previos antes de recrearlos |
 
 ---
@@ -206,7 +209,7 @@ equivalencia:
 | Banco (categoría) | `Bank` | catálogo: lo lee cualquier usuario, solo `admin` lo crea, modifica o borra (403 para `advisor`) |
 | Cuenta bancaria | `Client.bankAccounts[]` (subdocumento embebido) | no es colección propia — ver limitación abajo |
 | Emisor de un instrumento | `Issuer` | acción/corporación o gobierno; distinto de `Client`. Mismo criterio que `Bank`: escritura solo `admin` |
-| Instrumento financiero | `Instrument` | tipo único con discriminación por `type` (`stock`\|`bond`\|`fund`\|`other`); identificado por `isin` cuando se resuelve vía OpenFIGI. En ese caso guarda los datos de referencia de OpenFIGI (`figi`, `ticker`, `exchCode`, `securityType`, `securityType2`) y `type` se deriva de `securityType` con `normalizeSecurityType`. Esos campos son opcionales: se pueden completar después del alta |
+| Instrumento financiero | `Instrument` | tipo único con discriminación por `type` (`stock`\|`bond`\|`fund`\|`other`). El alta por API recibe únicamente `isin`: reutiliza un instrumento existente o lo resuelve vía OpenFIGI, guarda sus datos de referencia (`figi`, `ticker`, `exchCode`, `securityType`, `securityType2`) y deriva `type` con `normalizeSecurityType`. Si el ISIN no se puede resolver a un instrumento admitido, responde 422. El `PATCH` permite editar nombre, tipo, emisor y datos de referencia |
 | Posición | `Position` | tenencia de un `Instrument` en una `bankAccount` de un `Client`, con cantidad y precios |
 | Plan `plus` | `Advisor.planTier: "premium"` | la letra dice `plus`, el modelo usa `premium`. `base` admite hasta 4 clientes y 4 cuentas activas (403 al superarlo) |
 
@@ -274,7 +277,6 @@ erDiagram
         string exchCode
         string securityType "OpenFIGI, tal cual"
         string securityType2
-        object fundDetail "solo type=fund"
         boolean isDeleted
     }
     ISSUER ||--o{ INSTRUMENT : "issuerId (stock|bond)"
@@ -347,7 +349,7 @@ antes a qué `Client` pertenece, y actualizar una sola cuenta implica reenviar e
 arreglo completo (`findOneAndUpdate` reemplaza el arreglo, no lo mergea).
 
 Para compensarlo, el alta y el `PATCH` de un cliente validan las cuentas en el
-servicio (`bankAccounts.middleware.js`):
+servicio `assertBankAccountsService`, invocado desde `bankAccounts.middleware.js`:
 
 - cada `bankId` tiene que ser un banco existente y activo (422);
 - el `PATCH` recibe la lista completa con el `_id` de las cuentas existentes; una
@@ -405,7 +407,7 @@ de un único cliente:
 
 | Endpoint | Reporte |
 | --- | --- |
-| `/v1/report/client/:clientId` | Reporte completo: posiciones del mes, totales (costo, valor de mercado, resultado no realizado) y composición |
+| `/v1/report/client/:clientId` | Reporte completo: últimas posiciones reportadas dentro de los últimos 30 días, totales (costo, valor de mercado, resultado no realizado) y composición |
 | `/v1/report/client/:clientId/composition` | Totales y distribución de la cartera por tipo de instrumento, instrumento y emisor |
 | `/v1/report/client/:clientId/historic` | Totales por mes, variación del valor de mercado contra el mes anterior y distribución por tipo de instrumento |
 | `/v1/report/client/:clientId/news` | Análisis con IA generativa (Groq + búsqueda web) de las noticias recientes sobre las 3 mayores posiciones del cliente, con sus fuentes. `?lang=es` lo devuelve en español; si el proveedor de IA no responde, contesta 429/503 controlado |
@@ -480,21 +482,56 @@ app.use("/v1", v1Routes);
 Los endpoints se documentan y prueban con **Postman**:
 
 - Una única colección que agrupa carpetas por recurso.
-- Un request por endpoint, con tests para **cada status code** que devuelve.
-- Variable de colección `prod_base_url` apuntando a la API publicada, y variables
+- Requests de endpoints, filtros, permisos, validaciones e integridad referencial.
+- Variable de colección `prod_base_url` para seleccionar la API, y variables
   encadenadas (`token`, `clientId`, `positionId`, …) para correrla completa con el Runner.
 
 La colección exportada (JSON v2.1) está en
 [`documentation/postman/abakus.postman_collection.json`](documentation/postman/abakus.postman_collection.json).
+
+La colección conserva una URL de ejemplo en `prod_base_url`: configurarla antes de
+usar el Runner de Postman. En Newman, los comandos siguientes la reemplazan para
+esa ejecución. `npm test` todavía no está configurado.
+
+### Ejecutar desde consola y guardar un TXT
+
+Desde la raíz del proyecto, con la API local levantada en otra terminal:
+
+**CMD (Windows):**
+
+```cmd
+npx --yes newman run documentation/postman/abakus.postman_collection.json --env-var "prod_base_url=http://localhost:3000" --working-dir documentation/postman --color off > resultados-tests.txt 2>&1
+```
+
+**PowerShell (muestra la salida y también la guarda):**
+
+```powershell
+npx --yes newman run documentation/postman/abakus.postman_collection.json --env-var "prod_base_url=http://localhost:3000" --working-dir documentation/postman --color off 2>&1 | Tee-Object -FilePath resultados-tests.txt
+```
+
+`--working-dir documentation/postman` permite encontrar los archivos de `fixtures/`
+que usan los tests de imágenes. Ajustar el puerto si `PORT` tiene otro valor.
+Para ejecutar contra Vercel, reemplazar `http://localhost:3000` por
+`https://abakus-gamma.vercel.app`, sin barra final. La colección crea, modifica y
+elimina datos en la API seleccionada.
+
+### Limitaciones de la validación
+
+Las pruebas de resolución de instrumentos, carga de imágenes y noticias dependen
+de OpenFIGI, Cloudinary y Groq, respectivamente, y de su configuración.
+Si falla un alta, los tests posteriores que necesitan su ID pueden fallar en cadena.
+La existencia de la colección no implica que todos los casos estén pasando:
+revisar el resumen de assertions y los errores de cada ejecución.
 
 ---
 
 ## Deploy
 
 Deploy en **Vercel** contra MongoDB Atlas. Las variables de entorno de la tabla
-anterior se cargan en el proyecto de Vercel, y los seeds se corrieron contra la base
-de producción. La URL pública se documenta en la tabla del inicio de este README y
-en el archivo de entrega.
+necesarias para la API se cargan en el proyecto de Vercel; `ADMIN_SEED_PASSWORD`
+se usa únicamente al ejecutar el script de admins. Los seeds deben ejecutarse
+contra la base elegida mediante `MONGODB_URI`. La URL pública figura en la tabla
+del inicio de este README.
 
 ---
 

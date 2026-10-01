@@ -1,0 +1,2229 @@
+(node:1804) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+(Use `node --trace-deprecation ...` to show where the warning was created)
+newman
+
+Abakus API v1
+
+□ 0. Setup and general checks
+└ 0.1 Unknown endpoint outside /v1 -> 404
+  GET https://abakus-gamma.vercel.app//does-not-exist [404 Not Found, 523B, 371ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested endpoint does not exist."
+
+└ 0.2 Protected route without token -> 401
+  GET https://abakus-gamma.vercel.app//v1/bank [401 Unauthorized, 537B, 235ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 401
+  √  Error uses the { message, details } shape
+  √  Message is "An access token is required to use this resource."
+
+└ 0.3 Protected route with a malformed token -> 401
+  GET https://abakus-gamma.vercel.app//v1/bank [401 Unauthorized, 525B, 231ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 401
+  √  Error uses the { message, details } shape
+  √  Message is "The access token is invalid or has expired."
+
+└ 0.4 Authorization header without a token -> 401
+  GET https://abakus-gamma.vercel.app//v1/bank [401 Unauthorized, 525B, 218ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 401
+  √  Error uses the { message, details } shape
+  √  Message is "The access token is invalid or has expired."
+
+└ 0.5 Unknown endpoint under /v1 without token -> 401 (everything past /auth is protected)
+  GET https://abakus-gamma.vercel.app//v1/does-not-exist [401 Unauthorized, 537B, 335ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 401
+  √  Error uses the { message, details } shape
+  √  Message is "An access token is required to use this resource."
+
+□ 1. Auth
+└ 1.1 Register with empty body -> 400
+  POST https://abakus-gamma.vercel.app//v1/auth/register [400 Bad Request, 837B, 245ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "username"
+  √  Reports a problem with "password"
+  √  Reports a problem with "details"
+
+└ 1.2 Register without advisor details -> 400
+  POST https://abakus-gamma.vercel.app//v1/auth/register [400 Bad Request, 600B, 230ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "details"
+
+└ 1.3 Register with mismatched password confirmation -> 400
+  POST https://abakus-gamma.vercel.app//v1/auth/register [400 Bad Request, 598B, 213ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "confirmPassword"
+
+└ 1.4 Register with an invalid contact email -> 400
+  POST https://abakus-gamma.vercel.app//v1/auth/register [400 Bad Request, 591B, 229ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "details.contactEmail"
+
+└ 1.5 Register with a short password -> 400
+  POST https://abakus-gamma.vercel.app//v1/auth/register [400 Bad Request, 585B, 233ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "password"
+
+└ 1.6 Register choosing a role (privilege escalation) -> 400
+  POST https://abakus-gamma.vercel.app//v1/auth/register [400 Bad Request, 560B, 214ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "role"
+
+└ 1.7 Register choosing a plan -> 400
+  POST https://abakus-gamma.vercel.app//v1/auth/register [400 Bad Request, 568B, 223ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "planTier"
+
+└ 1.8 Register advisor A -> 201
+  POST https://abakus-gamma.vercel.app//v1/auth/register [201 Created, 1.17kB, 1035ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Message is "Your advisor account has been created."
+  √  Returns a JWT
+  √  Creates an advisor on the base plan
+  √  Response never exposes the password
+
+└ 1.9 Register a duplicate username -> 409
+  POST https://abakus-gamma.vercel.app//v1/auth/register [409 Conflict, 539B, 442ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 409
+  √  Error uses the { message, details } shape
+  √  Message is "This username is already registered."
+
+└ 1.10 Register a duplicate contact email -> 409
+  POST https://abakus-gamma.vercel.app//v1/auth/register [409 Conflict, 564B, 472ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 409
+  √  Error uses the { message, details } shape
+  √  Message is "This email is already linked to an advisor account."
+
+└ 1.11 Register advisor B (used for cross-account checks) -> 201
+  POST https://abakus-gamma.vercel.app//v1/auth/register [201 Created, 1.17kB, 1038ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Stores advisor B token and id
+
+└ 1.12 Login with empty body -> 400
+  POST https://abakus-gamma.vercel.app//v1/auth/login [400 Bad Request, 673B, 265ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "username"
+  √  Reports a problem with "password"
+
+└ 1.13 Login with a wrong password -> 401
+  POST https://abakus-gamma.vercel.app//v1/auth/login [401 Unauthorized, 509B, 801ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 401
+  √  Error uses the { message, details } shape
+  √  Message is "Invalid username or password."
+
+└ 1.14 Login with an unknown user -> 401 (same message, no user enumeration)
+  POST https://abakus-gamma.vercel.app//v1/auth/login [401 Unauthorized, 509B, 943ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 401
+  √  Error uses the { message, details } shape
+  √  Message is "Invalid username or password."
+
+└ 1.15 Login advisor A -> 200
+  POST https://abakus-gamma.vercel.app//v1/auth/login [200 OK, 1.19kB, 949ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Message is "Signed in successfully."
+  √  Returns the advisor, a JWT and updates lastConnection
+  √  Response never exposes the password
+
+└ 1.16 Login preloaded admin -> 200
+  POST https://abakus-gamma.vercel.app//v1/auth/login [200 OK, 905B, 915ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns an admin and a JWT
+  √  Response never exposes the password
+
+□ 2. User
+└ 2.1 Get own profile as advisor -> 200
+  GET https://abakus-gamma.vercel.app//v1/user/me [200 OK, 942B, 338ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns the logged-in advisor
+  √  Response never exposes the password
+
+└ 2.2 Get own profile as admin -> 200
+  GET https://abakus-gamma.vercel.app//v1/user/me [200 OK, 659B, 423ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns the admin
+  √  Response never exposes the password
+
+└ 2.3 Get plan usage on base plan -> 200
+  GET https://abakus-gamma.vercel.app//v1/user/me/plan [200 OK, 503B, 464ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  New advisor is on base with nothing used
+
+└ 2.4 Get plan usage as admin -> 403
+  GET https://abakus-gamma.vercel.app//v1/user/me/plan [403 Forbidden, 535B, 230ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 403
+  √  Error uses the { message, details } shape
+  √  Message is "Your account role does not have access to this resource."
+
+└ 2.5 Change plan as admin -> 403
+  PATCH https://abakus-gamma.vercel.app//v1/user/me/plan [403 Forbidden, 533B, 233ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 403
+  √  Error uses the { message, details } shape
+  √  Message is "Your account role does not have access to this resource."
+
+└ 2.6 Change plan with empty body -> 400
+  PATCH https://abakus-gamma.vercel.app//v1/user/me/plan [400 Bad Request, 583B, 228ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "planTier"
+
+└ 2.7 Change plan to anything but premium -> 400
+  PATCH https://abakus-gamma.vercel.app//v1/user/me/plan [400 Bad Request, 582B, 227ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "planTier"
+  √  Explains that only premium is allowed
+
+└ 2.8 Get plan usage without token -> 401
+  GET https://abakus-gamma.vercel.app//v1/user/me/plan [401 Unauthorized, 537B, 225ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 401
+  √  Error uses the { message, details } shape
+  √  Message is "An access token is required to use this resource."
+
+□ 3. Banks (category)
+└ 3.1 Create bank with empty body -> 400
+  POST https://abakus-gamma.vercel.app//v1/bank [400 Bad Request, 663B, 237ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "name"
+  √  Reports a problem with "country"
+  √  Reports a problem with "region"
+
+└ 3.2 Create bank with a logo URL -> 400 (the logo is only uploaded)
+  POST https://abakus-gamma.vercel.app//v1/bank [400 Bad Request, 566B, 220ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "logoURL"
+
+└ 3.3 Create bank with unknown field -> 400
+  POST https://abakus-gamma.vercel.app//v1/bank [400 Bad Request, 570B, 212ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "isDeleted"
+
+└ 3.4 Create bank -> 201
+  POST https://abakus-gamma.vercel.app//v1/bank [201 Created, 534B, 352ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Message is "Bank has been registered successfully."
+  √  Returns the new bank id
+
+└ 3.5 Create a second bank (to delete later) -> 201
+  POST https://abakus-gamma.vercel.app//v1/bank [201 Created, 534B, 343ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Stores the id
+
+└ 3.6 List banks -> 200
+  GET https://abakus-gamma.vercel.app//v1/bank?limit=100 [200 OK, 10.8kB, 356ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns a page of results
+  √  Includes the bank just created
+  √  Never lists deleted banks
+
+└ 3.7 Get bank by id -> 200
+  GET https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676 [200 OK, 648B, 340ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns the requested bank
+
+└ 3.8 Get nonexistent bank -> 404
+  GET https://abakus-gamma.vercel.app//v1/bank/000000000000000000000000 [404 Not Found, 479B, 336ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Message is "Bank not found."
+
+└ 3.9 Update bank with empty body -> 400
+  PATCH https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676 [400 Bad Request, 580B, 233ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Asks for at least one field
+
+└ 3.10 Update bank with an empty name -> 400
+  PATCH https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676 [400 Bad Request, 563B, 222ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "name"
+
+└ 3.11 Update bank -> 200
+  PATCH https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676 [200 OK, 712B, 403ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Message is "Bank has been updated successfully."
+  √  Returns the updated bank
+
+└ 3.12 Update nonexistent bank -> 404
+  PATCH https://abakus-gamma.vercel.app//v1/bank/000000000000000000000000 [404 Not Found, 477B, 346ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Message is "Bank not found."
+
+└ 3.13 Delete bank -> 200
+  DELETE https://abakus-gamma.vercel.app//v1/bank/6abda826ba07fb8cb4c3d677 [200 OK, 494B, 580ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Message is "Bank has been deactivated successfully."
+
+└ 3.14 Get deleted bank -> 404
+  GET https://abakus-gamma.vercel.app//v1/bank/6abda826ba07fb8cb4c3d677 [404 Not Found, 479B, 340ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Message is "Bank not found."
+
+└ 3.15 Delete nonexistent bank -> 404
+  DELETE https://abakus-gamma.vercel.app//v1/bank/000000000000000000000000 [404 Not Found, 477B, 343ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Message is "Bank not found."
+
+└ 3.16 Create bank as advisor -> 403
+  POST https://abakus-gamma.vercel.app//v1/bank [403 Forbidden, 533B, 237ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 403
+  √  Error uses the { message, details } shape
+  √  Message is "Your account role does not have access to this resource."
+
+└ 3.17 Update bank as advisor -> 403
+  PATCH https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676 [403 Forbidden, 533B, 212ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 403
+  √  Error uses the { message, details } shape
+  √  Message is "Your account role does not have access to this resource."
+
+└ 3.18 Delete bank as advisor -> 403
+  DELETE https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676 [403 Forbidden, 533B, 233ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 403
+  √  Error uses the { message, details } shape
+  √  Message is "Your account role does not have access to this resource."
+
+└ 3.19 Bank is unchanged after the advisor attempts -> 200
+  GET https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676 [200 OK, 656B, 337ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Keeps the admin update
+
+└ 3.20 List banks one per page -> 200
+  GET https://abakus-gamma.vercel.app//v1/bank?page=1&limit=1 [200 OK, 709B, 341ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns a single bank
+  √  One page per bank
+
+└ 3.21 List banks with page 0 -> 400
+  GET https://abakus-gamma.vercel.app//v1/bank?page=0 [400 Bad Request, 563B, 218ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Reports the invalid page
+
+└ 3.22 List banks with a non-numeric page -> 400
+  GET https://abakus-gamma.vercel.app//v1/bank?page=abc [400 Bad Request, 561B, 231ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Reports the invalid page
+
+└ 3.23 List banks above the page size cap -> 400
+  GET https://abakus-gamma.vercel.app//v1/bank?limit=101 [400 Bad Request, 566B, 241ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Reports the invalid limit
+
+└ 3.24 Filter banks by country and region, any letter case -> 200
+  GET https://abakus-gamma.vercel.app//v1/bank?country=URUGUAY&region=south%20america&limit=100 [200 OK, 8.1kB, 338ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Every result is in that country and region
+  √  Includes the test bank
+
+└ 3.25 Filter banks by a region no bank has -> 200, empty page
+  GET https://abakus-gamma.vercel.app//v1/bank?region=Nowhere%20muosk0nv [200 OK, 494B, 334ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns an empty page
+
+└ 3.26 Filter banks by an unsupported field -> 400
+  GET https://abakus-gamma.vercel.app//v1/bank?name=Banco [400 Bad Request, 579B, 215ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Reports the invalid name
+
+□ 4. Issuers
+└ 4.1 Create issuer with empty body -> 400
+  POST https://abakus-gamma.vercel.app//v1/issuer [400 Bad Request, 633B, 277ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "commercialName"
+  √  Reports a problem with "legalName"
+
+└ 4.2 Create issuer with a name over 100 characters -> 400
+  POST https://abakus-gamma.vercel.app//v1/issuer [400 Bad Request, 599B, 222ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "commercialName"
+
+└ 4.3 Create issuer -> 201
+  POST https://abakus-gamma.vercel.app//v1/issuer [201 Created, 538B, 337ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Message is "Issuer has been registered successfully."
+  √  Returns the new issuer id
+
+└ 4.4 Create a second issuer (to delete later) -> 201
+  POST https://abakus-gamma.vercel.app//v1/issuer [201 Created, 538B, 342ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Stores the id
+
+└ 4.5 List issuers -> 200
+  GET https://abakus-gamma.vercel.app//v1/issuer?limit=100 [200 OK, 7.22kB, 351ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns a page of results
+  √  Includes the issuer just created
+
+└ 4.6 Get issuer by id -> 200
+  GET https://abakus-gamma.vercel.app//v1/issuer/6abda82fba07fb8cb4c3d678 [200 OK, 707B, 341ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns the requested issuer
+
+└ 4.7 Get nonexistent issuer -> 404
+  GET https://abakus-gamma.vercel.app//v1/issuer/000000000000000000000000 [404 Not Found, 481B, 329ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Message is "Issuer not found."
+
+└ 4.8 Update issuer with empty body -> 400
+  PATCH https://abakus-gamma.vercel.app//v1/issuer/6abda82fba07fb8cb4c3d678 [400 Bad Request, 580B, 213ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+
+└ 4.9 Update issuer -> 200
+  PATCH https://abakus-gamma.vercel.app//v1/issuer/6abda82fba07fb8cb4c3d678 [200 OK, 776B, 346ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Message is "Issuer has been updated successfully."
+  √  Returns the updated issuer
+
+└ 4.10 Update nonexistent issuer -> 404
+  PATCH https://abakus-gamma.vercel.app//v1/issuer/000000000000000000000000 [404 Not Found, 479B, 347ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Message is "Issuer not found."
+
+└ 4.11 Delete issuer -> 200
+  DELETE https://abakus-gamma.vercel.app//v1/issuer/6abda82fba07fb8cb4c3d679 [200 OK, 492B, 620ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Message is "Issuer has been removed successfully."
+
+└ 4.12 Get deleted issuer -> 404
+  GET https://abakus-gamma.vercel.app//v1/issuer/6abda82fba07fb8cb4c3d679 [404 Not Found, 481B, 351ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Message is "Issuer not found."
+
+└ 4.13 Delete nonexistent issuer -> 404
+  DELETE https://abakus-gamma.vercel.app//v1/issuer/000000000000000000000000 [404 Not Found, 479B, 326ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Message is "Issuer not found."
+
+└ 4.14 Create issuer as advisor -> 403
+  POST https://abakus-gamma.vercel.app//v1/issuer [403 Forbidden, 533B, 211ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 403
+  √  Error uses the { message, details } shape
+  √  Message is "Your account role does not have access to this resource."
+
+└ 4.15 Update issuer as advisor -> 403
+  PATCH https://abakus-gamma.vercel.app//v1/issuer/6abda82fba07fb8cb4c3d678 [403 Forbidden, 533B, 226ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 403
+  √  Error uses the { message, details } shape
+  √  Message is "Your account role does not have access to this resource."
+
+└ 4.16 Delete issuer as advisor -> 403
+  DELETE https://abakus-gamma.vercel.app//v1/issuer/6abda82fba07fb8cb4c3d678 [403 Forbidden, 533B, 215ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 403
+  √  Error uses the { message, details } shape
+  √  Message is "Your account role does not have access to this resource."
+
+└ 4.17 Issuer is unchanged after the advisor attempts -> 200
+  GET https://abakus-gamma.vercel.app//v1/issuer/6abda82fba07fb8cb4c3d678 [200 OK, 717B, 335ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Keeps the admin update
+
+□ 5. Instruments
+└ 5.1 Create instrument with empty body -> 400
+  POST https://abakus-gamma.vercel.app//v1/instrument [400 Bad Request, 554B, 238ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Falta el ISIN
+
+└ 5.2 Create instrument with an unsupported type -> 400
+  POST https://abakus-gamma.vercel.app//v1/instrument [400 Bad Request, 591B, 228ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status 400
+  √  Reporta el ISIN inválido
+
+└ 5.3 Create stock without issuer -> 400
+  POST https://abakus-gamma.vercel.app//v1/instrument [400 Bad Request, 554B, 223ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status 400
+  √  Reporta el ISIN vacío
+
+└ 5.4 Create stock with fund detail -> 400
+  POST https://abakus-gamma.vercel.app//v1/instrument [400 Bad Request, 787B, 232ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "fundDetail"
+
+└ 5.5 Create fund with an unknown composition -> 400
+  POST https://abakus-gamma.vercel.app//v1/instrument [400 Bad Request, 555B, 214ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status 400
+  √  Reporta que el ISIN debe ser texto
+
+└ 5.6 Create stock -> 201
+  POST https://abakus-gamma.vercel.app//v1/instrument [201 Created, 547B, 348ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status 201
+  √  Guarda el ID del instrumento
+
+└ 5.7 Create fund -> 201
+  POST https://abakus-gamma.vercel.app//v1/instrument [422 Unprocessable Entity, 601B, 347ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  1. Status 201
+  2. Guarda el ID del fondo
+
+└ 5.8 List instruments -> 200
+  GET https://abakus-gamma.vercel.app//v1/instrument?limit=100 [200 OK, 8.41kB, 343ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns a page of results
+  3. Includes both new instruments
+
+└ 5.9 Get instrument by id -> 200
+  GET https://abakus-gamma.vercel.app//v1/instrument/6abc16b06262abd6972af03d [200 OK, 799B, 338ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns a stock linked to its issuer
+  √  Guarda el emisor del instrumento
+
+└ 5.10 Get nonexistent instrument -> 404
+  GET https://abakus-gamma.vercel.app//v1/instrument/000000000000000000000000 [404 Not Found, 485B, 335ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Message is "Instrument not found."
+
+└ 5.11 Update instrument with empty body -> 400
+  PATCH https://abakus-gamma.vercel.app//v1/instrument/6abc16b06262abd6972af03d [400 Bad Request, 580B, 229ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+
+└ 5.12 Update instrument -> 200
+  PATCH https://abakus-gamma.vercel.app//v1/instrument/ [404 Not Found, 515B, 227ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  4. Status is 200
+  5. Message is "Instrument has been updated successfully."
+  6. Returns the updated name
+
+└ 5.13 Update nonexistent instrument -> 404
+  PATCH https://abakus-gamma.vercel.app//v1/instrument/000000000000000000000000 [404 Not Found, 483B, 337ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Message is "Instrument not found."
+
+└ 5.14 Delete instrument -> 200
+  DELETE https://abakus-gamma.vercel.app//v1/instrument/ [404 Not Found, 515B, 227ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  7. Status is 200
+  8. Message is "Instrument has been removed successfully."
+
+└ 5.15 Get deleted instrument -> 404
+  GET https://abakus-gamma.vercel.app//v1/instrument/ [200 OK, 3.86kB, 347ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  9. Status is 404
+ 10. Message is "Instrument not found."
+
+└ 5.16 Delete nonexistent instrument -> 404
+  DELETE https://abakus-gamma.vercel.app//v1/instrument/000000000000000000000000 [404 Not Found, 483B, 443ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Message is "Instrument not found."
+
+└ 5.17 Filter instruments by type and name -> 200
+  GET https://abakus-gamma.vercel.app//v1/instrument?type=stock&q=JNJ&limit=100 [200 OK, 851B, 354ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status 200
+  √  Filtra acciones por ticker
+
+└ 5.18 Search instruments with regex characters -> 200 (matched as plain text)
+  GET https://abakus-gamma.vercel.app//v1/instrument?q=%28.* [200 OK, 494B, 336ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns a page
+
+└ 5.19 Filter instruments by an unsupported type -> 400
+  GET https://abakus-gamma.vercel.app//v1/instrument?type=crypto [400 Bad Request, 596B, 222ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Reports the invalid type
+
+└ 5.20 Create instrument with a malformed FIGI -> 400
+  PATCH https://abakus-gamma.vercel.app//v1/instrument/6abc16b06262abd6972af03d [400 Bad Request, 589B, 222ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Message is "The submitted data is invalid."
+  √  Reports the malformed FIGI
+
+└ 5.21 Update instrument with an empty exchange code -> 400
+  PATCH https://abakus-gamma.vercel.app//v1/instrument/6abc16b06262abd6972af03d [400 Bad Request, 571B, 219ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Message is "The submitted data is invalid."
+  √  Reports the empty exchange code
+
+└ 5.22 Add OpenFIGI reference data to an existing instrument -> 200
+  PATCH https://abakus-gamma.vercel.app//v1/instrument/6abc16b06262abd6972af03d [200 OK, 866B, 354ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Stores FIGI and exchange code in uppercase
+  √  Stores the security types verbatim
+
+□ 6. Managers
+└ 6.1 Create manager with empty body -> 400
+  POST https://abakus-gamma.vercel.app//v1/manager [400 Bad Request, 612B, 227ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "fullName"
+  √  Reports a problem with "email"
+
+└ 6.2 Create manager with an invalid email -> 400
+  POST https://abakus-gamma.vercel.app//v1/manager [400 Bad Request, 574B, 234ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "email"
+
+└ 6.3 Create manager -> 201
+  POST https://abakus-gamma.vercel.app//v1/manager [201 Created, 540B, 345ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Message is "Manager has been registered successfully."
+  √  Returns the new manager id
+
+└ 6.4 Create a second manager (to delete later) -> 201
+  POST https://abakus-gamma.vercel.app//v1/manager [201 Created, 540B, 332ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Stores the id
+
+└ 6.5 List managers -> 200
+  GET https://abakus-gamma.vercel.app//v1/manager?limit=100 [200 OK, 985B, 331ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns a page of results
+  √  Includes the manager just created
+
+└ 6.6 Get manager by id -> 200
+  GET https://abakus-gamma.vercel.app//v1/manager/6abda83e44aade4d0d9134b3 [200 OK, 686B, 346ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns the manager, owned by advisor A whatever the body said
+
+└ 6.7 Get nonexistent manager -> 404
+  GET https://abakus-gamma.vercel.app//v1/manager/000000000000000000000000 [404 Not Found, 516B, 346ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested manager does not exist."
+
+└ 6.8 Update manager with an invalid email -> 400
+  PATCH https://abakus-gamma.vercel.app//v1/manager/6abda83e44aade4d0d9134b3 [400 Bad Request, 574B, 350ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "email"
+
+└ 6.9 Update manager -> 200
+  PATCH https://abakus-gamma.vercel.app//v1/manager/6abda83e44aade4d0d9134b3 [200 OK, 755B, 456ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Message is "Manager has been updated successfully."
+  √  Returns the updated name
+
+└ 6.10 Update nonexistent manager -> 404
+  PATCH https://abakus-gamma.vercel.app//v1/manager/000000000000000000000000 [404 Not Found, 514B, 357ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested manager does not exist."
+
+└ 6.11 Delete manager -> 200
+  DELETE https://abakus-gamma.vercel.app//v1/manager/6abda83f44aade4d0d9134b5 [200 OK, 493B, 588ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Message is "Manager has been removed successfully."
+
+└ 6.12 Get deleted manager -> 404
+  GET https://abakus-gamma.vercel.app//v1/manager/6abda83f44aade4d0d9134b5 [404 Not Found, 516B, 326ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested manager does not exist."
+
+└ 6.13 Delete nonexistent manager -> 404
+  DELETE https://abakus-gamma.vercel.app//v1/manager/000000000000000000000000 [404 Not Found, 514B, 341ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested manager does not exist."
+
+└ 6.14 Get manager with an invalid id -> 400
+  GET https://abakus-gamma.vercel.app//v1/manager/not-an-id [400 Bad Request, 627B, 224ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "managerId"
+
+└ 6.15 Create manager as admin without choosing an advisor -> 400
+  POST https://abakus-gamma.vercel.app//v1/manager [400 Bad Request, 562B, 221ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "advisorId"
+
+└ 6.16 Advisor B creates its own manager -> 201
+  POST https://abakus-gamma.vercel.app//v1/manager [201 Created, 540B, 341ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Stores the id
+
+└ 6.17 List managers as advisor B -> 200, only its own team
+  GET https://abakus-gamma.vercel.app//v1/manager?limit=100 [200 OK, 743B, 350ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns a page of results
+  √  Only lists advisor B managers
+  √  Does not include advisor A's manager
+
+└ 6.18 Get another advisor's manager -> 404 (existence is not revealed)
+  GET https://abakus-gamma.vercel.app//v1/manager/6abda83e44aade4d0d9134b3 [404 Not Found, 516B, 366ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested manager does not exist."
+
+└ 6.19 Update another advisor's manager -> 404
+  PATCH https://abakus-gamma.vercel.app//v1/manager/6abda83e44aade4d0d9134b3 [404 Not Found, 514B, 328ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested manager does not exist."
+
+└ 6.20 Delete another advisor's manager -> 404
+  DELETE https://abakus-gamma.vercel.app//v1/manager/6abda83e44aade4d0d9134b3 [404 Not Found, 514B, 327ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested manager does not exist."
+
+└ 6.21 Update manager trying to hand it to another advisor -> 200, owner unchanged
+  PATCH https://abakus-gamma.vercel.app//v1/manager/6abda83e44aade4d0d9134b3 [200 OK, 755B, 466ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  advisorId is still advisor A and the name survived the attempts
+
+└ 6.22 Admin gets any manager -> 200
+  GET https://abakus-gamma.vercel.app//v1/manager/6abda84444aade4d0d9134be [200 OK, 690B, 338ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+
+□ 7. Clients
+└ 7.1 Create client with empty body -> 400
+  POST https://abakus-gamma.vercel.app//v1/client [400 Bad Request, 630B, 214ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "clientDetails"
+  √  Reports a problem with "managerId"
+
+└ 7.2 Create client with an incomplete bank account -> 400
+  POST https://abakus-gamma.vercel.app//v1/client [400 Bad Request, 739B, 223ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "bankAccounts.0.number"
+  √  Reports a problem with "bankAccounts.0.accountName"
+  √  Reports a problem with "bankAccounts.0.currency"
+
+└ 7.3 Create client as admin without choosing an advisor -> 400
+  POST https://abakus-gamma.vercel.app//v1/client [400 Bad Request, 562B, 229ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "advisorId"
+
+└ 7.4 Create client 1 -> 201
+  POST https://abakus-gamma.vercel.app//v1/client [201 Created, 538B, 919ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Message is "Client has been registered successfully."
+  √  Returns the new client id
+
+└ 7.5 Get client by id -> 200
+  GET https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [200 OK, 1.09kB, 369ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns the client owned by advisor A, whatever the body said
+  √  Embeds its bank account
+
+└ 7.6 Get client with an invalid id -> 400
+  GET https://abakus-gamma.vercel.app//v1/client/not-an-id [400 Bad Request, 623B, 228ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "clientId"
+
+└ 7.7 Get nonexistent client -> 404
+  GET https://abakus-gamma.vercel.app//v1/client/000000000000000000000000 [404 Not Found, 515B, 326ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested client does not exist."
+
+└ 7.8 Get another advisor's client -> 404 (existence is not revealed)
+  GET https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [404 Not Found, 515B, 353ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested client does not exist."
+
+└ 7.9 List clients as advisor A -> 200
+  GET https://abakus-gamma.vercel.app//v1/client?limit=100 [200 OK, 1.14kB, 350ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns a page of results
+  √  Only lists advisor A clients
+  √  Includes client 1
+
+└ 7.10 Update client with empty body -> 400
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [400 Bad Request, 580B, 329ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+
+└ 7.11 Update client with an empty commercial name -> 400
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [400 Bad Request, 593B, 329ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "clientDetails.commercialName"
+
+└ 7.12 Update client -> 200
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [200 OK, 1.15kB, 481ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Message is "Client has been updated successfully."
+  √  Returns the new name
+
+└ 7.13 Update client trying to hand it to another advisor -> 200, owner unchanged
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [200 OK, 1.15kB, 446ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  advisorId is still advisor A
+
+└ 7.14 Update a single client detail -> 200, the other details are kept
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [200 OK, 1.15kB, 468ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Only the country changes
+
+└ 7.15 Update another advisor's client -> 404
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [404 Not Found, 513B, 327ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested client does not exist."
+
+└ 7.16 Delete another advisor's client -> 404
+  DELETE https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [404 Not Found, 513B, 343ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested client does not exist."
+
+└ 7.17 Delete nonexistent client -> 404
+  DELETE https://abakus-gamma.vercel.app//v1/client/000000000000000000000000 [404 Not Found, 513B, 344ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested client does not exist."
+
+└ 7.18 Create client with another advisor's manager -> 422
+  POST https://abakus-gamma.vercel.app//v1/client [422 Unprocessable Entity, 642B, 797ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 422
+  √  Error uses the { message, details } shape
+  √  Message is "The selected manager is not part of the advisor's team."
+  √  Reports a problem with "managerId"
+
+└ 7.19 Create client with a deleted manager -> 422
+  POST https://abakus-gamma.vercel.app//v1/client [422 Unprocessable Entity, 642B, 806ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 422
+  √  Error uses the { message, details } shape
+  √  Message is "The selected manager is not part of the advisor's team."
+  √  Reports a problem with "managerId"
+
+└ 7.20 Create client with a malformed manager id -> 400
+  POST https://abakus-gamma.vercel.app//v1/client [400 Bad Request, 625B, 217ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "managerId"
+
+└ 7.21 Update client with another advisor's manager -> 422
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [422 Unprocessable Entity, 642B, 454ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 422
+  √  Error uses the { message, details } shape
+  √  Message is "The selected manager is not part of the advisor's team."
+  √  Reports a problem with "managerId"
+
+└ 7.22 Admin moves client 1 to advisor B keeping its manager -> 422
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [422 Unprocessable Entity, 642B, 681ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 422
+  √  Error uses the { message, details } shape
+  √  Message is "The selected manager is not part of the advisor's team."
+  √  Reports a problem with "managerId"
+
+└ 7.23 Client 1 keeps its manager and owner -> 200
+  GET https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [200 OK, 1.1kB, 354ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Nothing changed
+
+└ 7.24 Advisor B creates its own client -> 201
+  POST https://abakus-gamma.vercel.app//v1/client [201 Created, 538B, 918ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Stores the id
+
+└ 7.25 Get advisor B client -> 200
+  GET https://abakus-gamma.vercel.app//v1/client/6abda853ba07fb8cb4c3d688 [200 OK, 1.09kB, 332ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Stores its bank account
+
+└ 7.26 Upload client logo -> 200
+  ┌
+  │ 'Form param `image`, file load error: "fixtures/abakus
+  │ -logo.png", no such file'
+  └
+  POST https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9/uploadImage [400 Bad Request, 564B, 339ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+ 11. Status is 200
+ 12. Message is "Client logo has been updated successfully."
+ 13. Stores the Cloudinary URL in the client details
+
+└ 7.27 Get client shows its logo -> 200
+  GET https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [200 OK, 1.1kB, 328ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+ 14. logoURL is the uploaded one
+
+└ 7.28 Upload another advisor's client logo -> 404
+  ┌
+  │ 'Form param `image`, file load error: "fixtures/abakus
+  │ -logo.png", no such file'
+  └
+  POST https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9/uploadImage [404 Not Found, 513B, 373ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested client does not exist."
+
+└ 7.29 Upload client logo without a file -> 400
+  POST https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9/uploadImage [400 Bad Request, 564B, 344ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "image"
+
+└ 7.30 Upload a client logo that is not an image -> 400
+  ┌
+  │ 'Form param `image`, file load error: "fixtures/not-an
+  │ -image.txt", no such file'
+  └
+  POST https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9/uploadImage [400 Bad Request, 564B, 347ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "image"
+
+└ 7.31 Set the logo URL through PATCH -> 400 (only by upload)
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [400 Bad Request, 594B, 361ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "clientDetails.logoURL"
+
+└ 7.32 Search clients by part of the name, any letter case -> 200
+  GET https://abakus-gamma.vercel.app//v1/client?q=CLIENT%201%20RENAMED%20muosk0nv [200 OK, 1.15kB, 341ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Includes client 1
+
+└ 7.33 Filter clients by country, bank and bank region -> 200
+  GET https://abakus-gamma.vercel.app//v1/client?country=paraguay&bankId=6abda825ba07fb8cb4c3d676&region=South%20America&limit=100 [200 OK, 1.15kB, 475ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Every result is in Paraguay with an active account in the bank
+  √  Includes client 1
+  √  Leaves out advisor B's client
+
+└ 7.34 Filter clients by a region no bank has -> 200, empty page
+  GET https://abakus-gamma.vercel.app//v1/client?region=Nowhere%20muosk0nv [200 OK, 494B, 458ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns an empty page
+
+└ 7.35 Filter clients by a malformed manager id -> 400
+  GET https://abakus-gamma.vercel.app//v1/client?managerId=not-an-id [400 Bad Request, 627B, 223ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Reports the invalid managerId
+
+□ 8. Plan limit flow
+└ 8.1 Create client 2 of 4 on base -> 201
+  POST https://abakus-gamma.vercel.app//v1/client [201 Created, 538B, 959ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Stores the id
+
+└ 8.2 Create client 3 of 4 on base -> 201
+  POST https://abakus-gamma.vercel.app//v1/client [201 Created, 538B, 918ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+
+└ 8.3 Create client 4 of 4 on base -> 201
+  POST https://abakus-gamma.vercel.app//v1/client [201 Created, 538B, 914ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+
+└ 8.4 Plan usage shows the limit reached -> 200
+  GET https://abakus-gamma.vercel.app//v1/user/me/plan [200 OK, 503B, 534ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  4 of 4 used
+
+└ 8.5 Create client 5 on base -> 403 (plan limit)
+  POST https://abakus-gamma.vercel.app//v1/client [403 Forbidden, 586B, 681ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 403
+  √  Error uses the { message, details } shape
+  √  Message is "The base plan client limit has been reached; upgrade to premium to register more clients."
+  √  Reports the limit and current usage
+
+└ 8.6 Advisor B: one client with 4 more bank accounts on base -> 403 (account limit)
+  POST https://abakus-gamma.vercel.app//v1/client [403 Forbidden, 588B, 703ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 403
+  √  Error uses the { message, details } shape
+  √  Message is "The base plan bank account limit has been reached; upgrade to premium to add more accounts."
+
+└ 8.7 Upgrade to premium -> 200
+  PATCH https://abakus-gamma.vercel.app//v1/user/me/plan [200 OK, 535B, 332ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Message is "Your advisor account has been upgraded to the premium plan."
+  √  Plan is now premium
+
+└ 8.8 Upgrade again -> 409
+  PATCH https://abakus-gamma.vercel.app//v1/user/me/plan [409 Conflict, 528B, 451ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 409
+  √  Error uses the { message, details } shape
+  √  Message is "Your advisor account is already on the premium plan."
+
+└ 8.9 Create client 5 on premium -> 201
+  POST https://abakus-gamma.vercel.app//v1/client [201 Created, 538B, 911ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Stores the id
+
+└ 8.10 Plan usage on premium has no limit -> 200
+  GET https://abakus-gamma.vercel.app//v1/user/me/plan [200 OK, 509B, 457ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Premium, 5 clients, no limit
+
+└ 8.11 Delete client 5 while it has an active bank account -> 409 (RF18)
+  DELETE https://abakus-gamma.vercel.app//v1/client/6abda85f44aade4d0d9134e4 [409 Conflict, 541B, 442ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 409
+  √  Error uses the { message, details } shape
+  √  Message is "This client still has active bank accounts and cannot be removed."
+
+└ 8.12 Get client 5 to deactivate its bank account -> 200
+  GET https://abakus-gamma.vercel.app//v1/client/6abda85f44aade4d0d9134e4 [200 OK, 1.09kB, 360ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Stores its accounts marked as deleted, keeping their _id
+
+└ 8.13 Deactivate client 5 bank account -> 200, same account id
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda85f44aade4d0d9134e4 [200 OK, 1.14kB, 577ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  The account keeps its id and is marked as deleted
+
+└ 8.14 Delete client 5 -> 200
+  DELETE https://abakus-gamma.vercel.app//v1/client/6abda85f44aade4d0d9134e4 [200 OK, 492B, 571ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Message is "Client has been removed successfully."
+
+└ 8.15 Get deleted client -> 404
+  GET https://abakus-gamma.vercel.app//v1/client/6abda85f44aade4d0d9134e4 [404 Not Found, 515B, 352ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested client does not exist."
+
+└ 8.16 Report on a deleted client -> 404
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda85f44aade4d0d9134e4 [404 Not Found, 515B, 337ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested client does not exist."
+
+└ 8.17 Delete an already deleted client -> 404
+  DELETE https://abakus-gamma.vercel.app//v1/client/6abda85f44aade4d0d9134e4 [404 Not Found, 513B, 330ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested client does not exist."
+
+□ 9. Positions
+└ 9.1 Create positions with an empty list -> 400
+  POST https://abakus-gamma.vercel.app//v1/position [400 Bad Request, 567B, 213ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+
+└ 9.2 Create positions with an object instead of a list -> 400
+  POST https://abakus-gamma.vercel.app//v1/position [400 Bad Request, 566B, 237ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+
+└ 9.3 Create position without instrument id or ISIN -> 400
+  POST https://abakus-gamma.vercel.app//v1/position [400 Bad Request, 615B, 213ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Explains the instrument must be identified
+
+└ 9.4 Create position with both instrument id and ISIN -> 400
+  POST https://abakus-gamma.vercel.app//v1/position [400 Bad Request, 618B, 226ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+
+└ 9.5 Create position with a malformed ISIN -> 400
+  POST https://abakus-gamma.vercel.app//v1/position [400 Bad Request, 593B, 215ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "0.isin"
+
+└ 9.6 Create position with a negative quantity -> 400
+  POST https://abakus-gamma.vercel.app//v1/position [400 Bad Request, 578B, 226ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "0.quantity"
+
+└ 9.7 Create position for a nonexistent client -> 404
+  POST https://abakus-gamma.vercel.app//v1/position [404 Not Found, 604B, 328ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "One or more positions reference a client or bank account that was not found."
+  √  Reports a problem with "0.clientId"
+
+└ 9.8 Create position for another advisor's client -> 404
+  POST https://abakus-gamma.vercel.app//v1/position [404 Not Found, 604B, 329ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "One or more positions reference a client or bank account that was not found."
+  √  Reports a problem with "0.clientId"
+
+└ 9.9 Create position in a bank account the client does not have -> 404
+  POST https://abakus-gamma.vercel.app//v1/position [404 Not Found, 631B, 335ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "One or more positions reference a client or bank account that was not found."
+  √  Reports a problem with "0.bankAccountId"
+
+└ 9.10 Create position with an ISIN no security has -> 422
+  POST https://abakus-gamma.vercel.app//v1/position [422 Unprocessable Entity, 644B, 555ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 422
+  √  Error uses the { message, details } shape
+  √  Message is "One or more positions reference an ISIN that could not be resolved to an instrument."
+  √  Reports a problem with "0.isin"
+
+└ 9.11 Create position by instrument id -> 201
+  POST https://abakus-gamma.vercel.app//v1/position [201 Created, 548B, 471ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Message is "Positions have been registered successfully."
+  √  Returns the new position ids
+
+└ 9.12 Create position by an ISIN Abakus already knows (resolved from the database) -> 201
+  POST https://abakus-gamma.vercel.app//v1/position [201 Created, 548B, 564ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Returns the new position ids
+
+└ 9.13 Create position by an ISIN Abakus does not know (resolved through OpenFIGI) -> 201
+  POST https://abakus-gamma.vercel.app//v1/position [201 Created, 548B, 570ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Returns the new position ids
+
+└ 9.14 The imported instrument carries OpenFIGI reference data -> 200
+  GET https://abakus-gamma.vercel.app//v1/instrument?isin=US4781601046 [200 OK, 850B, 343ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Classified as a stock through its security type
+  √  Keeps the US listing, not a foreign one
+
+└ 9.15 Create two positions at once, entered manually without market value -> 201
+  POST https://abakus-gamma.vercel.app//v1/position [201 Created, 575B, 588ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Returns one id per position
+
+└ 9.16 List positions -> 200
+  GET https://abakus-gamma.vercel.app//v1/position?limit=100 [200 OK, 2.91kB, 503ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns a page of results
+  √  Includes the new position
+  √  Keeps the market value reported by the bank
+  √  Calculates the market value of a manual entry (20 x 175.5)
+
+└ 9.17 Get position by id -> 200
+  GET https://abakus-gamma.vercel.app//v1/position/6abda86844aade4d0d9134fe [200 OK, 923B, 456ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns the stored holding
+
+└ 9.18 Get nonexistent position -> 404
+  GET https://abakus-gamma.vercel.app//v1/position/000000000000000000000000 [404 Not Found, 517B, 338ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested position does not exist."
+
+└ 9.19 Update position with empty body -> 400
+  PATCH https://abakus-gamma.vercel.app//v1/position/6abda86844aade4d0d9134fe [400 Bad Request, 580B, 441ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+
+└ 9.20 Update position with a zero price -> 400
+  PATCH https://abakus-gamma.vercel.app//v1/position/6abda86844aade4d0d9134fe [400 Bad Request, 585B, 448ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "currentPrice"
+
+└ 9.21 Update position -> 200
+  PATCH https://abakus-gamma.vercel.app//v1/position/6abda86844aade4d0d9134fe [200 OK, 987B, 576ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Message is "Position has been updated successfully."
+  √  Returns the new price
+
+└ 9.22 Update nonexistent position -> 404
+  PATCH https://abakus-gamma.vercel.app//v1/position/000000000000000000000000 [404 Not Found, 515B, 346ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested position does not exist."
+
+└ 9.23 Delete position -> 200
+  DELETE https://abakus-gamma.vercel.app//v1/position/6abda86aba07fb8cb4c3d6a9 [200 OK, 494B, 702ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Message is "Position has been removed successfully."
+
+└ 9.24 Get deleted position -> 404
+  GET https://abakus-gamma.vercel.app//v1/position/6abda86aba07fb8cb4c3d6a9 [404 Not Found, 517B, 335ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested position does not exist."
+
+└ 9.25 Delete nonexistent position -> 404
+  DELETE https://abakus-gamma.vercel.app//v1/position/000000000000000000000000 [404 Not Found, 515B, 330ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested position does not exist."
+
+└ 9.26 Get position with an invalid id -> 400
+  GET https://abakus-gamma.vercel.app//v1/position/not-an-id [400 Bad Request, 631B, 235ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "positionId"
+
+└ 9.27 Advisor B creates a position for its own client -> 201
+  POST https://abakus-gamma.vercel.app//v1/position [201 Created, 548B, 462ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 201
+  √  Returns the new position ids
+
+└ 9.28 List positions as advisor B -> 200, only its own clients
+  GET https://abakus-gamma.vercel.app//v1/position?limit=100 [200 OK, 975B, 459ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns a page of results
+  √  Only lists positions of advisor B clients
+  √  Does not include advisor A's position
+
+└ 9.29 Get another advisor's position -> 404 (existence is not revealed)
+  GET https://abakus-gamma.vercel.app//v1/position/6abda86844aade4d0d9134fe [404 Not Found, 517B, 479ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested position does not exist."
+
+└ 9.30 Update another advisor's position -> 404
+  PATCH https://abakus-gamma.vercel.app//v1/position/6abda86844aade4d0d9134fe [404 Not Found, 515B, 446ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested position does not exist."
+
+└ 9.31 Delete another advisor's position -> 404
+  DELETE https://abakus-gamma.vercel.app//v1/position/6abda86844aade4d0d9134fe [404 Not Found, 515B, 449ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested position does not exist."
+
+└ 9.32 Move a position to another advisor's client -> 404
+  PATCH https://abakus-gamma.vercel.app//v1/position/6abda86844aade4d0d9134fe [404 Not Found, 602B, 573ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "One or more positions reference a client or bank account that was not found."
+  √  Reports a problem with "clientId"
+
+└ 9.33 Move a position to another client's bank account -> 404
+  PATCH https://abakus-gamma.vercel.app//v1/position/6abda86844aade4d0d9134fe [404 Not Found, 629B, 453ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "One or more positions reference a client or bank account that was not found."
+  √  Reports a problem with "bankAccountId"
+
+└ 9.34 Position is unchanged after the attempts -> 200
+  GET https://abakus-gamma.vercel.app//v1/position/6abda86844aade4d0d9134fe [200 OK, 924B, 464ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Same client, account and quantity
+
+└ 9.35 Admin gets any position -> 200
+  GET https://abakus-gamma.vercel.app//v1/position/6abda87044aade4d0d913510 [200 OK, 923B, 575ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+
+└ 9.36 Filter positions by client and instrument type -> 200
+  GET https://abakus-gamma.vercel.app//v1/position?clientId=6abda84944aade4d0d9134c9&type=stock&limit=100 [200 OK, 2.44kB, 577ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Every result is client 1's
+  √  Includes the position created by instrument id
+
+└ 9.37 Filter positions by a type the client does not hold -> 200, empty page
+  GET https://abakus-gamma.vercel.app//v1/position?clientId=6abda84944aade4d0d9134c9&type=bond [200 OK, 494B, 569ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns an empty page
+
+└ 9.38 Filter positions reported today -> 200
+  GET https://abakus-gamma.vercel.app//v1/position?clientId=6abda84944aade4d0d9134c9&from=2026-10-01&to=2026-10-01&limit=100 [200 OK, 2.44kB, 466ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Every result was reported today
+  √  Includes the position created by instrument id
+
+└ 9.39 Advisor B filters by advisor A's client -> 200, empty page (no access)
+  GET https://abakus-gamma.vercel.app//v1/position?clientId=6abda84944aade4d0d9134c9 [200 OK, 494B, 466ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Returns an empty page
+
+└ 9.40 Filter positions with a date range that ends before it starts -> 400
+  GET https://abakus-gamma.vercel.app//v1/position?from=2026-02-01&to=2026-01-01 [400 Bad Request, 565B, 232ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Reports the invalid to
+
+□ 10. Reports
+└ 10.1 Full client report -> 200
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9 [200 OK, 2.71kB, 558ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Is a client-full report for client 1
+  √  Totals are consistent with the positions
+  √  Deleted positions are left out
+  √  composition.byInstrumentType percentages add up to 100
+
+└ 10.2 Composition report -> 200
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9/composition [200 OK, 1.53kB, 569ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Is a client-composition report for client 1
+  √  Groups by type, instrument and issuer
+  √  composition.byInstrument percentages add up to 100
+
+└ 10.3 Historic report -> 200
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9/historic [200 OK, 1.01kB, 560ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Is a client-historic report for client 1
+  √  Has at least the current month, first one without a change
+
+└ 10.4 Instrument report -> 200
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9/instrument/6abc16b06262abd6972af03d [200 OK, 1.8kB, 698ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Is a client-instrument report for client 1
+  √  Only includes that instrument
+
+└ 10.5 Issuer report -> 200
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9/issuer/6abda82fba07fb8cb4c3d678 [200 OK, 998B, 705ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Is a client-issuer report for client 1
+  √  Only includes that issuer
+
+└ 10.6 Report as admin -> 200
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9/composition [200 OK, 1.53kB, 560ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Admins can read any client
+
+└ 10.7 Report with an invalid client id -> 400
+  GET https://abakus-gamma.vercel.app//v1/report/client/not-an-id [400 Bad Request, 623B, 229ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "clientId"
+
+└ 10.8 Instrument report with an invalid instrument id -> 400
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9/instrument/xyz [400 Bad Request, 639B, 231ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "instrumentId"
+
+└ 10.9 Report for a nonexistent client -> 404
+  GET https://abakus-gamma.vercel.app//v1/report/client/000000000000000000000000 [404 Not Found, 515B, 335ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested client does not exist."
+
+└ 10.10 Report for another advisor's client -> 404
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9 [404 Not Found, 515B, 376ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested client does not exist."
+
+└ 10.11 Instrument report for a nonexistent instrument -> 404
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9/instrument/000000000000000000000000 [404 Not Found, 485B, 457ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Message is "Instrument not found."
+
+└ 10.12 Issuer report for a nonexistent issuer -> 404
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9/issuer/000000000000000000000000 [404 Not Found, 481B, 459ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Message is "Issuer not found."
+
+└ 10.13 Report without token -> 401
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9 [401 Unauthorized, 537B, 235ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 401
+  √  Error uses the { message, details } shape
+  √  Message is "An access token is required to use this resource."
+
+└ 10.14 News report with an invalid client id -> 400
+  GET https://abakus-gamma.vercel.app//v1/report/client/not-an-id/news [400 Bad Request, 623B, 241ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "clientId"
+
+└ 10.15 News report in an unsupported language -> 400
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9/news?lang=fr [400 Bad Request, 569B, 232ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "lang"
+  √  Lists the supported languages
+
+└ 10.16 News report of another advisor's client -> 404
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9/news [404 Not Found, 515B, 385ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested client does not exist."
+
+└ 10.17 News report of a client without recent positions -> 404
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda859ba07fb8cb4c3d69a/news [404 Not Found, 547B, 461ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "No positions have been reported for this client in the last 30 days."
+
+└ 10.18 News report of client 1 -> 200 (or controlled 429/503 if the AI is unavailable)
+  GET https://abakus-gamma.vercel.app//v1/report/client/6abda84944aade4d0d9134c9/news [429 Too Many Requests, 580B, 676ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is one of 200, 429, 503
+  √  Error uses the { message, details } shape
+
+□ 11. Bank logo
+└ 11.1 Upload bank logo without a file -> 400
+  POST https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676/uploadImage [400 Bad Request, 564B, 225ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "image"
+  √  Explains the image is required
+
+└ 11.2 Upload bank logo -> 200
+  ┌
+  │ 'Form param `image`, file load error: "fixtures/abakus
+  │ -logo.png", no such file'
+  └
+  POST https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676/uploadImage [400 Bad Request, 564B, 219ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+ 15. Status is 200
+ 16. Message is "Bank logo has been updated successfully."
+ 17. Stores the Cloudinary URL in the bank
+
+└ 11.3 Get bank shows its logo -> 200
+  GET https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676 [200 OK, 656B, 337ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+ 18. logoURL is the uploaded one
+
+└ 11.4 Upload bank logo as advisor -> 403
+  ┌
+  │ 'Form param `image`, file load error: "fixtures/abakus
+  │ -logo.png", no such file'
+  └
+  POST https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676/uploadImage [403 Forbidden, 533B, 225ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 403
+  √  Error uses the { message, details } shape
+  √  Message is "Your account role does not have access to this resource."
+
+└ 11.5 Upload bank logo without token -> 401
+  ┌
+  │ 'Form param `image`, file load error: "fixtures/abakus
+  │ -logo.png", no such file'
+  └
+  POST https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676/uploadImage [401 Unauthorized, 529B, 225ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 401
+  √  Error uses the { message, details } shape
+  √  Message is "An access token is required to use this resource."
+
+└ 11.6 Upload a bank logo that is not an image -> 400
+  ┌
+  │ 'Form param `image`, file load error: "fixtures/not-an
+  │ -image.txt", no such file'
+  └
+  POST https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676/uploadImage [400 Bad Request, 564B, 230ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "image"
+ 19. Lists the accepted formats
+
+└ 11.7 Upload the bank logo in another field -> 400
+  ┌
+  │ 'Form param `imagen`, file load error: "fixtures/abaku
+  │ s-logo.png", no such file'
+  └
+  POST https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676/uploadImage [400 Bad Request, 564B, 243ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "image"
+
+└ 11.8 Upload logo of a nonexistent bank -> 404
+  ┌
+  │ 'Form param `image`, file load error: "fixtures/abakus
+  │ -logo.png", no such file'
+  └
+  POST https://abakus-gamma.vercel.app//v1/bank/000000000000000000000000/uploadImage [400 Bad Request, 564B, 224ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+ 20. Status is 404
+ 21. Message is "Bank not found."
+
+└ 11.9 Upload logo of a deleted bank -> 404
+  ┌
+  │ 'Form param `image`, file load error: "fixtures/abakus
+  │ -logo.png", no such file'
+  └
+  POST https://abakus-gamma.vercel.app//v1/bank/6abda826ba07fb8cb4c3d677/uploadImage [400 Bad Request, 564B, 227ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+ 22. Status is 404
+ 23. Message is "Bank not found."
+
+└ 11.10 Upload bank logo with an invalid bank id -> 400
+  ┌
+  │ 'Form param `image`, file load error: "fixtures/abakus
+  │ -logo.png", no such file'
+  └
+  POST https://abakus-gamma.vercel.app//v1/bank/not-an-id/uploadImage [400 Bad Request, 605B, 237ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "id"
+
+└ 11.11 Set the bank logo through PATCH -> 400 (only by upload)
+  PATCH https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676 [400 Bad Request, 566B, 226ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "logoURL"
+
+└ 11.12 The old generic upload route is gone -> 404
+  ┌
+  │ 'Form param `image`, file load error: "fixtures/abakus
+  │ -logo.png", no such file'
+  └
+  POST https://abakus-gamma.vercel.app//v1/uploads [404 Not Found, 515B, 230ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 404
+  √  Error uses the { message, details } shape
+  √  Message is "The requested endpoint does not exist."
+
+□ 12. Referential integrity
+└ 12.1 Delete client 1 while it has an active bank account -> 409 (RF18)
+  DELETE https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [409 Conflict, 541B, 453ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 409
+  √  Error uses the { message, details } shape
+  √  Message is "This client still has active bank accounts and cannot be removed."
+
+└ 12.2 Delete a bank that holds client accounts -> 409 (RF17)
+  DELETE https://abakus-gamma.vercel.app//v1/bank/6abda825ba07fb8cb4c3d676 [409 Conflict, 543B, 469ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 409
+  √  Error uses the { message, details } shape
+  √  Message is "This bank still holds active client accounts and cannot be removed."
+
+└ 12.3 Delete an issuer with active instruments -> 409
+  DELETE https://abakus-gamma.vercel.app//v1/issuer/6abc16b06262abd6972af03c [409 Conflict, 539B, 465ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 409
+  √  Error uses the { message, details } shape
+  √  Message is "This issuer still has active instruments and cannot be removed."
+
+└ 12.4 Delete an instrument held in active positions -> 409
+  DELETE https://abakus-gamma.vercel.app//v1/instrument/6abc16b06262abd6972af03d [409 Conflict, 549B, 342ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 409
+  √  Error uses the { message, details } shape
+  √  Message is "This instrument is still held in active positions and cannot be removed."
+
+└ 12.5 Delete a manager assigned to active clients -> 409
+  DELETE https://abakus-gamma.vercel.app//v1/manager/6abda83e44aade4d0d9134b3 [409 Conflict, 548B, 453ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 409
+  √  Error uses the { message, details } shape
+  √  Message is "This manager is still assigned to active clients and cannot be removed."
+
+└ 12.6 Get client 1 to build bank account updates -> 200
+  GET https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [200 OK, 1.1kB, 347ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  Stores the account list variants used below
+
+└ 12.7 Deactivate a bank account that holds active positions -> 409
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [409 Conflict, 586B, 461ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 409
+  √  Error uses the { message, details } shape
+  √  Message is "This bank account still holds active positions and cannot be removed."
+
+└ 12.8 Update client dropping its bank accounts -> 422
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [422 Unprocessable Entity, 591B, 345ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 422
+  √  Error uses the { message, details } shape
+  √  Message is "Bank accounts cannot be removed; mark them as deleted instead."
+
+└ 12.9 Update client changing an existing account's number -> 422
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [422 Unprocessable Entity, 624B, 349ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 422
+  √  Error uses the { message, details } shape
+  √  Message is "The bank and number of an existing account cannot change; mark it as deleted and add a new one."
+
+└ 12.10 Update client with another client's bank account id -> 422
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [422 Unprocessable Entity, 586B, 348ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 422
+  √  Error uses the { message, details } shape
+  √  Message is "The selected bank account does not belong to this client."
+
+└ 12.11 Update client repeating one of its bank accounts -> 409
+  PATCH https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [409 Conflict, 540B, 455ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 409
+  √  Error uses the { message, details } shape
+  √  Message is "This bank account is already registered."
+
+└ 12.12 Create client with an account in a deleted bank -> 422
+  POST https://abakus-gamma.vercel.app//v1/client [422 Unprocessable Entity, 554B, 354ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 422
+  √  Error uses the { message, details } shape
+  √  Message is "The selected bank does not exist."
+
+└ 12.13 Create client with a malformed bank id -> 400
+  POST https://abakus-gamma.vercel.app//v1/client [400 Bad Request, 643B, 336ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 400
+  √  Error uses the { message, details } shape
+  √  Message is "The submitted data is invalid."
+  √  Reports a problem with "bankId"
+
+└ 12.14 Create client with an account another client already registered -> 409
+  POST https://abakus-gamma.vercel.app//v1/client [409 Conflict, 540B, 464ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 409
+  √  Error uses the { message, details } shape
+  √  Message is "This bank account is already registered."
+
+└ 12.15 Client 1 and its account are unchanged after the attempts -> 200
+  GET https://abakus-gamma.vercel.app//v1/client/6abda84944aade4d0d9134c9 [200 OK, 1.1kB, 341ms]
+  √  Responds with JSON
+  √  Never leaks a stack trace
+  √  Status is 200
+  √  The account keeps its id, number and active state
+
+┌─────────────────────────┬─────────────────────┬─────────────────────┐
+│                         │            executed │              failed │
+├─────────────────────────┼─────────────────────┼─────────────────────┤
+│              iterations │                   1 │                   0 │
+├─────────────────────────┼─────────────────────┼─────────────────────┤
+│                requests │                 253 │                   0 │
+├─────────────────────────┼─────────────────────┼─────────────────────┤
+│            test-scripts │                 506 │                   0 │
+├─────────────────────────┼─────────────────────┼─────────────────────┤
+│      prerequest-scripts │                   3 │                   0 │
+├─────────────────────────┼─────────────────────┼─────────────────────┤
+│              assertions │                1267 │                  23 │
+├─────────────────────────┴─────────────────────┴─────────────────────┤
+│ total run duration: 1m 59.1s                                        │
+├─────────────────────────────────────────────────────────────────────┤
+│ total data received: 90.85kB (approx)                               │
+├─────────────────────────────────────────────────────────────────────┤
+│ average response time: 383ms [min: 211ms, max: 1038ms, s.d.: 174ms] │
+└─────────────────────────────────────────────────────────────────────┘
+
+[31m   # [39m[31m failure        [39m[31m detail                                                                                                     [39m
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 01.  AssertionError  Status 201                                                                                                 
+                      expected response to have status code 201 but got 422                                                      
+                      at assertion:0 in test-script                                                                              
+                      inside "5. Instruments / 5.7 Create fund -> 201"                                                           
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 02.  AssertionError  Guarda el ID del fondo                                                                                     
+                      expected undefined to match /^[a-f0-9]{24}$/                                                               
+                      at assertion:1 in test-script                                                                              
+                      inside "5. Instruments / 5.7 Create fund -> 201"                                                           
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 03.  AssertionError  Includes both new instruments                                                                              
+                      expected [ '6abc82a76262abd6972af418', …(28) ] to include ''                                               
+                      at assertion:2 in test-script                                                                              
+                      inside "5. Instruments / 5.8 List instruments -> 200"                                                      
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 04.  AssertionError  Status is 200                                                                                              
+                      expected response to have status code 200 but got 404                                                      
+                      at assertion:0 in test-script                                                                              
+                      inside "5. Instruments / 5.12 Update instrument -> 200"                                                    
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 05.  AssertionError  Message is "Instrument has been updated successfully."                                                     
+                      expected 'The requested endpoint does not exist.' to deeply equal 'Instrument has been updated successfu…' 
+                      at assertion:1 in test-script                                                                              
+                      inside "5. Instruments / 5.12 Update instrument -> 200"                                                    
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 06.  TypeError       Returns the updated name                                                                                   
+                      Cannot read properties of undefined (reading 'name')                                                       
+                      at assertion:2 in test-script                                                                              
+                      inside "5. Instruments / 5.12 Update instrument -> 200"                                                    
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 07.  AssertionError  Status is 200                                                                                              
+                      expected response to have status code 200 but got 404                                                      
+                      at assertion:0 in test-script                                                                              
+                      inside "5. Instruments / 5.14 Delete instrument -> 200"                                                    
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 08.  AssertionError  Message is "Instrument has been removed successfully."                                                     
+                      expected 'The requested endpoint does not exist.' to deeply equal 'Instrument has been removed successfu…' 
+                      at assertion:1 in test-script                                                                              
+                      inside "5. Instruments / 5.14 Delete instrument -> 200"                                                    
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 09.  AssertionError  Status is 404                                                                                              
+                      expected response to have status code 404 but got 200                                                      
+                      at assertion:0 in test-script                                                                              
+                      inside "5. Instruments / 5.15 Get deleted instrument -> 404"                                               
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 10.  AssertionError  Message is "Instrument not found."                                                                         
+                      expected undefined to deeply equal 'Instrument not found.'                                                 
+                      at assertion:1 in test-script                                                                              
+                      inside "5. Instruments / 5.15 Get deleted instrument -> 404"                                               
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 11.  AssertionError  Status is 200                                                                                              
+                      expected response to have status code 200 but got 400                                                      
+                      at assertion:0 in test-script                                                                              
+                      inside "7. Clients / 7.26 Upload client logo -> 200"                                                       
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 12.  AssertionError  Message is "Client logo has been updated successfully."                                                    
+                      expected 'The submitted data is invalid.' to deeply equal 'Client logo has been updated successf…'         
+                      at assertion:1 in test-script                                                                              
+                      inside "7. Clients / 7.26 Upload client logo -> 200"                                                       
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 13.  TypeError       Stores the Cloudinary URL in the client details                                                            
+                      Cannot destructure property 'clientDetails' of 'pm.response.json(...).client' as it is undefined.          
+                      at assertion:2 in test-script                                                                              
+                      inside "7. Clients / 7.26 Upload client logo -> 200"                                                       
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 14.  AssertionError  logoURL is the uploaded one                                                                                
+                      expected undefined to deeply equal ''                                                                      
+                      at assertion:1 in test-script                                                                              
+                      inside "7. Clients / 7.27 Get client shows its logo -> 200"                                                
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 15.  AssertionError  Status is 200                                                                                              
+                      expected response to have status code 200 but got 400                                                      
+                      at assertion:0 in test-script                                                                              
+                      inside "11. Bank logo / 11.2 Upload bank logo -> 200"                                                      
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 16.  AssertionError  Message is "Bank logo has been updated successfully."                                                      
+                      expected 'The submitted data is invalid.' to deeply equal 'Bank logo has been updated successful…'         
+                      at assertion:1 in test-script                                                                              
+                      inside "11. Bank logo / 11.2 Upload bank logo -> 200"                                                      
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 17.  TypeError       Stores the Cloudinary URL in the bank                                                                      
+                      Cannot read properties of undefined (reading 'logoURL')                                                    
+                      at assertion:2 in test-script                                                                              
+                      inside "11. Bank logo / 11.2 Upload bank logo -> 200"                                                      
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 18.  AssertionError  logoURL is the uploaded one                                                                                
+                      expected undefined to deeply equal ''                                                                      
+                      at assertion:1 in test-script                                                                              
+                      inside "11. Bank logo / 11.3 Get bank shows its logo -> 200"                                               
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 19.  AssertionError  Lists the accepted formats                                                                                 
+                      expected 'An image file is required.' to deeply equal 'The image must be a PNG, JPEG, WEBP o…'             
+                      at assertion:4 in test-script                                                                              
+                      inside "11. Bank logo / 11.6 Upload a bank logo that is not an image -> 400"                               
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 20.  AssertionError  Status is 404                                                                                              
+                      expected response to have status code 404 but got 400                                                      
+                      at assertion:0 in test-script                                                                              
+                      inside "11. Bank logo / 11.8 Upload logo of a nonexistent bank -> 404"                                     
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 21.  AssertionError  Message is "Bank not found."                                                                               
+                      expected 'The submitted data is invalid.' to deeply equal 'Bank not found.'                                
+                      at assertion:1 in test-script                                                                              
+                      inside "11. Bank logo / 11.8 Upload logo of a nonexistent bank -> 404"                                     
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 22.  AssertionError  Status is 404                                                                                              
+                      expected response to have status code 404 but got 400                                                      
+                      at assertion:0 in test-script                                                                              
+                      inside "11. Bank logo / 11.9 Upload logo of a deleted bank -> 404"                                         
+[90m     [39m[90m                [39m[90m                                                                                                            [39m
+ 23.  AssertionError  Message is "Bank not found."                                                                               
+                      expected 'The submitted data is invalid.' to deeply equal 'Bank not found.'                                
+                      at assertion:1 in test-script                                                                              
+                      inside "11. Bank logo / 11.9 Upload logo of a deleted bank -> 404"                                         
