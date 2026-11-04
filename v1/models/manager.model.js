@@ -24,8 +24,19 @@ const managerSchema = new mongoose.Schema(
       default: false,
     },
   },
-  { timestamps: true },
+  // Virtuals go out in the JSON so a populated `advisor` reaches the client; id: false skips the extra `id` copy
+  { timestamps: true, toJSON: { virtuals: true }, id: false },
 );
+
+// The advisor's account, filled only when a query populates it. Kept apart from advisorId so
+// advisorId always stays a plain id
+managerSchema.virtual('advisor', {
+  // The advisor discriminator (see user.model.js), whose schema defines `details`
+  ref: 'advisor',
+  localField: 'advisorId',
+  foreignField: '_id',
+  justOne: true,
+});
 
 const Manager = mongoose.model('Manager', managerSchema, 'managers');
 

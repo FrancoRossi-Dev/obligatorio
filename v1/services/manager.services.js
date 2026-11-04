@@ -3,8 +3,11 @@ import Manager from '../models/manager.model.js';
 import { ERRORS, httpError } from '../utils/http-error.js';
 import { paginate } from '../utils/pagination.js';
 
+// Each manager comes with its advisor's firm name (advisor.details.comercialName)
 export const getManagersService = async (filter, pagination) =>
-  paginate(Manager, { ...filter, isDeleted: false }, pagination);
+  paginate(Manager, { ...filter, isDeleted: false }, pagination, {
+    populate: { path: 'advisor', select: 'details.comercialName' },
+  });
 
 export const getManagerByIdService = async (id) => {
   const manager = await Manager.findOne({ _id: id, isDeleted: false });
