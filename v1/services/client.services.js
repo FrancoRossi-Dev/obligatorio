@@ -155,6 +155,16 @@ export const assertBankAccountsService = async (incomingAccounts, client = null)
   if (client) await assertDeactivatedAccountsUnused(client, incomingById);
 };
 
+// Pushes a single account, so the stored ones keep their _id; checked first by assertBankAccountsService
+export const addBankAccountService = async (id, account) => {
+  const client = await Client.findOneAndUpdate(
+    { _id: id, isDeleted: false },
+    { $push: { bankAccounts: account } },
+    { returnDocument: 'after', runValidators: true },
+  );
+  return client;
+};
+
 // A client can't be removed while it still has active bank accounts
 export const deleteClientService = async (id) => {
   const client = await Client.findOne({ _id: id, isDeleted: false });

@@ -18,6 +18,17 @@ export const createClientPlanLimitMiddleware = async (req, res, next) => {
   }
 };
 
+// The added account counts against the plan of the advisor who owns the client.
+// Must run after ownedClientMiddleware, which loads req.client
+export const addBankAccountPlanLimitMiddleware = async (req, res, next) => {
+  try {
+    await assertPlanLimitService(req.client.advisorId, { addedAccounts: 1 });
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
 // bankAccounts replaces the stored array on update, so only the difference counts;
 // moving the client to another advisor adds the client and all its accounts to that advisor.
 // Must run after ownedClientMiddleware, which loads req.client

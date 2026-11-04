@@ -1,4 +1,5 @@
 import {
+  addBankAccountService,
   createClientService,
   deleteClientService,
   getClientsService,
@@ -13,6 +14,7 @@ const CLIENT_MESSAGES = {
   created: 'Client has been registered successfully.',
   updated: 'Client has been updated successfully.',
   logoUpdated: 'Client logo has been updated successfully.',
+  bankAccountAdded: 'Bank account has been linked to the client successfully.',
   deleted: 'Client has been removed successfully.',
 };
 

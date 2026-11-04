@@ -27,13 +27,11 @@ export const loginService = async (username, password) => {
 };
 
 export const registerService = async ({ username, password, details }) => {
+  const usernameExists = await User.exists({ username });
 
-const usernameExists = await User.exists({ username });
-
-
-if (usernameExists) {
-  throw httpError(ERRORS.usernameTaken, { username });
-}
+  if (usernameExists) {
+    throw httpError(ERRORS.usernameTaken, { username });
+  }
 
   if (await Advisor.exists({ 'details.contactEmail': details.contactEmail.toLowerCase().trim() })) {
     throw httpError(ERRORS.emailTaken, { email: details.contactEmail });
@@ -44,17 +42,15 @@ if (usernameExists) {
   let advisor;
   try {
     advisor = await Advisor.create({ username, password: hashedPassword, details });
+  } catch (err) {
+    if (err.code === Number(process.env.MONGO_DUPLICATE_KEY)) {
+      const isEmail = 'details.contactEmail' in (err.keyPattern ?? {});
+
+      throw httpError(isEmail ? ERRORS.emailTaken : ERRORS.usernameTaken);
+    }
+
+    throw err;
   }
-  catch (err) {
-  if (err.code === Number(process.env.MONGO_DUPLICATE_KEY)) {
-    const isEmail = 'details.contactEmail' in (err.keyPattern ?? {});
-
-    throw httpError(isEmail ? ERRORS.emailTaken : ERRORS.usernameTaken);
-  }
-
-  throw err;
-}
-
 
   return { user: toPublicUser(advisor), token: signToken(advisor) };
 };

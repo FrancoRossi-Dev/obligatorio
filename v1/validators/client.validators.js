@@ -73,6 +73,28 @@ export const createClientSchema = Joi.object({
     .default([]),
 });
 
+// POST /v1/client/:clientId/bankAccounts: links one new, active account in a bank to the client
+export const addBankAccountSchema = Joi.object({
+  bankId: Joi.string().hex().length(24).required().messages({
+    "string.empty": "Bank ID is required.",
+    "string.hex": "Bank ID is not valid.",
+    "string.length": "Bank ID is not valid.",
+    "any.required": "Bank ID is required.",
+  }),
+  number: Joi.string().trim().required().messages({
+    "string.empty": "Bank account number is required.",
+    "any.required": "Bank account number is required.",
+  }),
+  accountName: Joi.string().trim().required().messages({
+    "string.empty": "Bank account name is required.",
+    "any.required": "Bank account name is required.",
+  }),
+  currency: Joi.string().trim().required().messages({
+    "string.empty": "Currency is required.",
+    "any.required": "Currency is required.",
+  }),
+});
+
 export const updateClientSchema = Joi.object({
   advisorId: Joi.string().hex().length(24).messages({
     "string.empty": "Advisor cannot be empty.",

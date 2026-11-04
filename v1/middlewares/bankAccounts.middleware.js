@@ -21,3 +21,14 @@ export const updateClientBankAccountsMiddleware = async (req, res, next) => {
     next(error);
   }
 };
+
+// The new account is checked as part of the client's full list, so it can't repeat one the client already holds.
+// Must run after body validation and ownedClientMiddleware
+export const addClientBankAccountMiddleware = async (req, res, next) => {
+  try {
+    await assertBankAccountsService([...req.client.bankAccounts, req.validatedBody], req.client);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
