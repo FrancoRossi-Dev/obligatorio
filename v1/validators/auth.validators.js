@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-const textMessages = (label, reason) => ({
+export const textMessages = (label, reason) => ({
   'string.base': `${label} must be text.`,
   'string.empty': `${label} is required ${reason}.`,
   'string.min': `${label} must be at least {#limit} characters long.`,
@@ -11,10 +11,11 @@ const textMessages = (label, reason) => ({
 const usernameMessages = textMessages('Username', 'to identify your advisor account');
 const passwordMessages = textMessages('Password', 'to secure your account');
 
-const username = Joi.string().trim().min(3).max(30).required().messages(usernameMessages);
-const password = Joi.string().min(6).max(30).required().messages(passwordMessages);
+// Exported so the admin's advisor management (user.validators.js) applies the same rules
+export const username = Joi.string().trim().min(3).max(30).required().messages(usernameMessages);
+export const password = Joi.string().min(6).max(30).required().messages(passwordMessages);
 
-const advisorDetailsSchema = Joi.object({
+export const advisorDetailsSchema = Joi.object({
   comercialName: Joi.string()
     .trim()
     .max(100)
@@ -30,11 +31,13 @@ const advisorDetailsSchema = Joi.object({
   address: Joi.string()
     .trim()
     .max(200)
+    .empty('')
     .messages(textMessages('Address', 'when provided')),
 
   country: Joi.string()
     .trim()
     .max(60)
+    .empty('')
     .messages(textMessages('Country', 'when provided')),
 
   document: Joi.string()

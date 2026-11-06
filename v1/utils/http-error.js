@@ -20,6 +20,7 @@ export const ERRORS = {
   positionNotFound: { status: 404, message: 'The requested position does not exist.' },
   userNotFound: { status: 404, message: 'The account linked to this session no longer exists.' },
   advisorNotFound: { status: 422, message: 'The selected advisor does not exist.' },
+  advisorAccountNotFound: { status: 404, message: 'The requested advisor does not exist.' },
   managerNotInTeam: { status: 422, message: "The selected manager is not part of the advisor's team." },
   bankAccountNotFound: { status: 422, message: 'The selected bank account does not belong to this client.' },
   bankAccountMissing: {
@@ -56,6 +57,10 @@ export const ERRORS = {
   instrumentInUse: {
     status: 409,
     message: 'This instrument is still held in active positions and cannot be removed.',
+  },
+  advisorInUse: {
+    status: 409,
+    message: 'This advisor still has active clients or managers and cannot be removed.',
   },
   managerInUse: {
     status: 409,
