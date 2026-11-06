@@ -22,8 +22,11 @@ export const getManagers = async (req, res) => {
 // advisorId is set by assignAdvisorMiddleware
 export const createManager = async (req, res) => {
   const manager = await createManagerService(req.validatedBody);
-  return res.status(201).json({ managerID: manager.id, message: MANAGER_MESSAGES.created });
+  return res.status(201).json({ managerID: manager._id, message: MANAGER_MESSAGES.created });
 };
+
+// The Manager schema uses `id: false` (see manager.model.js), which removes the `doc.id` getter:
+// always read `_id` here, `id` is undefined
 
 // req.manager is loaded and access-checked by ownedManagerMiddleware
 export const getManagerById = async (req, res) => {
@@ -31,13 +34,13 @@ export const getManagerById = async (req, res) => {
 };
 
 export const updateManager = async (req, res) => {
-  const manager = await updateManagerService(req.manager.id, req.validatedBody);
+  const manager = await updateManagerService(req.manager._id,req.validatedBody);
   if (!manager) return res.status(404).json({ message: MANAGER_MESSAGES.notFound });
   res.status(200).json({ manager, message: MANAGER_MESSAGES.updated });
 };
 
 export const deleteManager = async (req, res) => {
-  const manager = await deleteManagerService(req.manager.id);
+  const manager = await deleteManagerService(req.manager._id);
   if (!manager) return res.status(404).json({ message: MANAGER_MESSAGES.notFound });
   return res.status(200).json({ message: MANAGER_MESSAGES.deleted });
 };
