@@ -157,12 +157,27 @@ const advisor = await Advisor.create({
 });
 console.log(`Created advisor "${advisor.username}".`);
 
+// Official logos, taken from Wikimedia Commons and uploaded once to Cloudinary (folder "banks")
+const CLOUDINARY_BANKS = 'https://res.cloudinary.com/lc05phhs/image/upload/v1794155600/banks';
+const SEED_BANK_LOGOS = {
+  'EDR': `${CLOUDINARY_BANKS}/logo-edr.png`,
+  'EFG': `${CLOUDINARY_BANKS}/logo-efg.png`,
+  'JPM': `${CLOUDINARY_BANKS}/logo-jpm.png`,
+  'Julius Baer': `${CLOUDINARY_BANKS}/logo-juliusbaer.png`,
+  'LGT': `${CLOUDINARY_BANKS}/logo-lgt.png`,
+  'Morgan Stanley': `${CLOUDINARY_BANKS}/logo-morganstanley.png`,
+  'StoneX': `${CLOUDINARY_BANKS}/logo-stonex.png`,
+  'UBP': `${CLOUDINARY_BANKS}/logo-ubp.png`,
+  'UBS': `${CLOUDINARY_BANKS}/logo-ubs.png`,
+};
+
 const banks = await Bank.create(
   SEED_BANK_NAMES.map((name) => ({
     name,
     region: 'International',
     country: 'Unknown',
-    logoURL: `https://picsum.photos/seed/${encodeURIComponent(name)}/200`,
+    // A bank added to the seed data without a logo falls back to a placeholder
+    logoURL: SEED_BANK_LOGOS[name] ?? `https://picsum.photos/seed/${encodeURIComponent(name)}/200`,
   })),
 );
 console.log(`Created ${banks.length} banks.`);
@@ -223,7 +238,8 @@ for (const clientName of clientNames) {
     },
 
     // Round-robin, so every run gives each manager the same clients
-    managerId: managers[clients.length % managers.length].id,
+    // _id: the Manager schema sets id: false, so .id is undefined
+    managerId: managers[clients.length % managers.length]._id,
 
     bankAccounts: uniqueAccounts.map((account) => ({
       clientId,
