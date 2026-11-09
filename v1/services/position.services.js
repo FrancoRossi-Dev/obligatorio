@@ -27,22 +27,15 @@ export const getPositionByIdService = async (id) => {
 };
 
 // Bank imports report the market value; a manually entered position gets it from quantity and price
-export const createPositionService = async (positionData) => {
-  const position = new Position({
-    ...positionData,
-    marketValue: positionData.marketValue ?? round(getPositionValue(positionData)),
-  });
-  await position.save();
-  return position;
-};
+const withMarketValue = (positionData) => ({
+  ...positionData,
+  marketValue: positionData.marketValue ?? round(getPositionValue(positionData)),
+});
 
-export const createPositionsService = async (positionsData) => {
-  const positions = [];
-  for (const positionData of positionsData) {
-    positions.push(await createPositionService(positionData));
-  }
-  return positions;
-};
+// One insertMany instead of a save per position: a whole bank report is a single round trip.
+// Every document is validated before anything is written, so a schema error stores nothing
+export const createPositionsService = async (positionsData) =>
+  Position.insertMany(positionsData.map(withMarketValue), { ordered: true });
 
 export const updatePositionService = async (id, positionData) => {
   const position = await Position.findByIdAndUpdate(id, positionData, {
