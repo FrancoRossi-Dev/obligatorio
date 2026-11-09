@@ -138,7 +138,6 @@ if (previousAdvisor) {
   await User.deleteOne({ _id: previousAdvisor.id });
   console.log('Removed previously seeded demo data.');
 }
-await Bank.deleteMany({ name: { $in: SEED_BANK_NAMES } });
 
 const hashedPassword = await bcrypt.hash('Demo1234!', Number(process.env.SALT_ROUNDS));
 const advisor = await Advisor.create({
@@ -171,16 +170,26 @@ const SEED_BANK_LOGOS = {
   'UBS': `${CLOUDINARY_BANKS}/logo-ubs.png`,
 };
 
-const banks = await Bank.create(
-  SEED_BANK_NAMES.map((name) => ({
-    name,
-    region: 'International',
-    country: 'Unknown',
-    // A bank added to the seed data without a logo falls back to a placeholder
-    logoURL: SEED_BANK_LOGOS[name] ?? `https://picsum.photos/seed/${encodeURIComponent(name)}/200`,
-  })),
+// Upsert by name instead of delete + create: other advisors' clients hold accounts that
+// reference these banks by _id, so the ids must stay the same across seed runs
+const banks = await Promise.all(
+  SEED_BANK_NAMES.map((name) =>
+    Bank.findOneAndUpdate(
+      { name },
+      {
+        $set: {
+          region: 'International',
+          country: 'Unknown',
+          // A bank added to the seed data without a logo falls back to a placeholder
+          logoURL: SEED_BANK_LOGOS[name] ?? `https://picsum.photos/seed/${encodeURIComponent(name)}/200`,
+          isDeleted: false,
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    ),
+  ),
 );
-console.log(`Created ${banks.length} banks.`);
+console.log(`Upserted ${banks.length} banks.`);
 const bankByName = new Map(
   banks.map((bank) => [
     bank.name,

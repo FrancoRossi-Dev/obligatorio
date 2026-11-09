@@ -148,7 +148,15 @@ export const assertBankAccountsService = async (incomingAccounts, client = null)
 
   const activeAccounts = incomingAccounts.filter((account) => !account.isDeleted);
   if (activeAccounts.length > 0) {
-    await assertBanksActive(activeAccounts);
+    // Only accounts that become active here (new or reactivated) need an active bank: an account
+    // that was already active can't change bank, and a bank can't be deleted while it holds one
+    const storedActiveIds = new Set(
+      (client?.bankAccounts ?? []).filter((account) => !account.isDeleted).map((account) => account.id),
+    );
+    const newlyActive = activeAccounts.filter(
+      (account) => !account._id || !storedActiveIds.has(normalizeId(account._id)),
+    );
+    if (newlyActive.length > 0) await assertBanksActive(newlyActive);
     await assertAccountsUnique(activeAccounts, client?._id);
   }
 
