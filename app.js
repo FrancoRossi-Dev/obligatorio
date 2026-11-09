@@ -19,7 +19,8 @@ app.use(requestLoggerMiddleware);
 app.use(cors());
 
 // Middlewares para parsear el body de las peticiones
-app.use(express.json());
+// 1mb: un reporte de banco completo (cientos de posiciones de varios clientes) se importa en un solo POST /v1/position
+app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Rutas de la version 1 de la API

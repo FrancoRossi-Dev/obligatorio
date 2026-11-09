@@ -386,6 +386,13 @@ mayúsculas; `q` busca "contiene" y se escapa, nunca se interpreta como regex.
 Un advisor solo ve lo propio aunque filtre por un `clientId` ajeno. Detalle en
 [`documentation/endpoints.md`](documentation/endpoints.md) § 0.
 
+### Importación de posiciones
+
+`POST /v1/position` recibe una lista de posiciones que pueden ser de **distintos clientes y
+cuentas** (un reporte de banco entero). Se validan todas las referencias y todos los ISIN antes
+de guardar: si alguna falla no se guarda ninguna y `details[].field` indica el índice
+(`'3.bankAccountId'`). El body admite hasta 1 MB.
+
 ---
 
 ## Planes
