@@ -16,7 +16,9 @@ const toPublicUser = (user) => {
 };
 
 export const loginService = async (username, password) => {
-  const user = await User.findOne({ username, isDeleted: { $ne: true } }).select('+password');
+  const user = await User.findOne({ username, isDeleted: { $ne: true } })
+  .collation({ locale: 'en', strength: 2 })
+  .select('+password');
 
   const validPassword = user && (await bcrypt.compare(password, user.password));
   if (!validPassword) throw httpError(ERRORS.invalidCredentials);
